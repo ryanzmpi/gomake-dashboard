@@ -73,6 +73,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #2e3092; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .legend { margin-top: 14px; font-size: 24px; color: #9ca3af; padding: 0 4px; }
+    .summary { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat-card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 20px 28px; flex: 1; min-width: 200px; border-top: 4px solid #e5e7eb; }
+    .stat-card.due { border-top-color: #d97706; }
+    .stat-card.done { border-top-color: #16a34a; }
+    .stat-label { font-size: 24px; color: #6b7280; font-weight: 600; margin-bottom: 6px; }
+    .stat-value { font-size: 48px; font-weight: 700; color: #1a202c; }
+    .stat-card.due .stat-value { color: #d97706; }
+    .stat-card.done .stat-value { color: #16a34a; }
   </style>
 </head>
 <body>
@@ -84,6 +92,16 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   <div class="status-bar" id="statusBar">Loading…</div>
 </header>
 <main>
+  <div class="summary">
+    <div class="stat-card due">
+      <div class="stat-label">Due Today</div>
+      <div class="stat-value" id="dueTodayCount">—</div>
+    </div>
+    <div class="stat-card done">
+      <div class="stat-label">Closed / Shipped Today</div>
+      <div class="stat-value" id="doneTodayCount">—</div>
+    </div>
+  </div>
   <div class="card">
     <div class="toolbar">
       <div class="toolbar-left">
@@ -149,12 +167,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   async function loadOrders() {
     setLoading(true);
     allOrders = [];
+    const rawOrders = [];
     try {
       let page = 0;
       while (true) {
         const data = await fetchPage(page);
         const orders = extractOrders(data);
         if (!orders.length) break;
+        rawOrders.push(...orders);
         const open = orders.filter(o =>
           !String(o.statusTitleText || "").toLowerCase().includes("closed") &&
           o.deliveryStatus !== 3
@@ -163,6 +183,19 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         if (orders.length < 100) break;
         page++;
       }
+
+      // Summary counts
+      const todayStr = new Date().toISOString().split("T")[0];
+      const dueToday = allOrders.filter(r => r.due_date === todayStr).length;
+      const doneToday = rawOrders.filter(o => {
+        const isClosed = String(o.statusTitleText || "").toLowerCase().includes("closed");
+        const isDelivered = o.deliveryStatus === 3;
+        const readyDate = String(o.readyDate || "").split("T")[0];
+        return (isClosed || isDelivered) && readyDate === todayStr;
+      }).length;
+      document.getElementById("dueTodayCount").textContent = dueToday;
+      document.getElementById("doneTodayCount").textContent = doneToday;
+
       const now = new Date().toLocaleTimeString();
       document.getElementById("statusBar").innerHTML = '&#10003; ' + allOrders.length + ' orders &nbsp;&middot;&nbsp; Updated ' + now;
       renderTable();
