@@ -36,43 +36,43 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a202c; min-height: 100vh; }
     header { background: #2e3092; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
-    header h1 { font-size: 20px; font-weight: 600; }
-    header .subtitle { font-size: 13px; opacity: 0.75; margin-top: 2px; }
-    .status-bar { font-size: 12px; opacity: 0.85; text-align: right; }
+    header h1 { font-size: 40px; font-weight: 600; }
+    header .subtitle { font-size: 26px; opacity: 0.75; margin-top: 2px; }
+    .status-bar { font-size: 24px; opacity: 0.85; text-align: right; }
     main { max-width: 1100px; margin: 32px auto; padding: 0 24px; }
     .card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 24px; }
     .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; justify-content: space-between; }
     .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .badge { background: #ede9fe; color: #2e3092; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
+    .badge { background: #ede9fe; color: #2e3092; font-size: 24px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
     .field-sm { display: flex; flex-direction: column; }
-    .field-sm label { font-size: 12px; font-weight: 600; color: #4a5568; margin-bottom: 4px; }
-    .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 13px; background: white; outline: none; }
-    button { padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s, opacity 0.2s; }
+    .field-sm label { font-size: 24px; font-weight: 600; color: #4a5568; margin-bottom: 4px; }
+    .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 26px; background: white; outline: none; }
+    button { padding: 8px 18px; border-radius: 6px; font-size: 26px; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s, opacity 0.2s; }
     .btn-primary { background: #2e3092; color: white; }
     .btn-primary:hover { background: #252880; }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-secondary { background: #e5e7eb; color: #374151; }
     .btn-secondary:hover { background: #d1d5db; }
-    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 13px; width: 220px; outline: none; }
+    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 26px; width: 220px; outline: none; }
     .search-box:focus { border-color: #2e3092; }
     table { width: 100%; border-collapse: collapse; }
-    thead th { text-align: left; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; padding: 10px 16px; border-bottom: 2px solid #e5e7eb; cursor: pointer; user-select: none; }
+    thead th { text-align: left; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; padding: 10px 16px; border-bottom: 2px solid #e5e7eb; cursor: pointer; user-select: none; }
     thead th:hover { color: #2e3092; }
     tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.1s; }
     tbody tr:hover { background: #f8faff; }
-    tbody td { padding: 12px 16px; font-size: 14px; }
+    tbody td { padding: 12px 16px; font-size: 28px; }
     .order-num { font-weight: 600; color: #2e3092; font-family: monospace; }
-    .due-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .due-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 24px; font-weight: 600; }
     .due-overdue { background: #fee2e2; color: #dc2626; }
     .due-soon    { background: #fef3c7; color: #d97706; }
     .due-ok      { background: #dcfce7; color: #16a34a; }
     .due-none    { background: #f3f4f6; color: #6b7280; }
-    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 14px; }
+    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 28px; }
     .state .icon { font-size: 32px; margin-bottom: 8px; }
     .error-msg { color: #dc2626; }
     .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #2e3092; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .legend { margin-top: 14px; font-size: 12px; color: #9ca3af; padding: 0 4px; }
+    .legend { margin-top: 14px; font-size: 24px; color: #9ca3af; padding: 0 4px; }
   </style>
 </head>
 <body>
@@ -87,7 +87,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   <div class="card">
     <div class="toolbar">
       <div class="toolbar-left">
-        <strong style="font-size:15px">Sales Orders <span class="badge" id="orderCount">0</span></strong>
+        <strong style="font-size:30px">Sales Orders <span class="badge" id="orderCount">0</span></strong>
         <input class="search-box" type="search" id="searchBox" placeholder="Search orders…" oninput="renderTable()" />
       </div>
       <div class="toolbar-left">
