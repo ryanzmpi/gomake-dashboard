@@ -1,5 +1,5 @@
 """
-GoMake Orders Dashboard Server
+Marathon Printing Orders Dashboard Server
 Serves the dashboard and proxies GoMake API calls server-side.
 
 Setup:
@@ -31,7 +31,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GoMake Orders Dashboard</title>
+  <title>Marathon Printing Orders Dashboard</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a202c; min-height: 100vh; }
@@ -39,7 +39,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     header h1 { font-size: 40px; font-weight: 600; }
     header .subtitle { font-size: 26px; opacity: 0.75; margin-top: 2px; }
     .status-bar { font-size: 24px; opacity: 0.85; text-align: right; }
-    main { max-width: 1100px; margin: 32px auto; padding: 0 24px; }
+    main { width: 100%; margin: 32px auto; padding: 0 24px; box-sizing: border-box; }
     .card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 24px; }
     .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; justify-content: space-between; }
     .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -78,7 +78,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 <body>
 <header>
   <div>
-    <h1>GoMake Orders Dashboard</h1>
+    <h1>Marathon Printing Orders Dashboard</h1>
     <div class="subtitle">Sales orders · order numbers &amp; due dates</div>
   </div>
   <div class="status-bar" id="statusBar">Loading…</div>
@@ -272,7 +272,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="GoMake Orders Dashboard", lifespan=lifespan)
+app = FastAPI(title="Marathon Printing Orders Dashboard", lifespan=lifespan)
 
 
 @app.get("/", response_class=HTMLResponse)
