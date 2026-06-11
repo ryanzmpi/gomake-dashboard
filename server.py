@@ -232,11 +232,15 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     const today = new Date(); today.setHours(0,0,0,0);
     const soon = new Date(today); soon.setDate(soon.getDate() + 3);
     const tBody = rows.map(r => {
-      let cls = "due-none", label = r.due_date || "—";
+      let cls = "due-none", label = "—";
       if (r.due_date) {
-        const d = new Date(r.due_date);
+        const parts = r.due_date.split('-');
+        const displayDate = parts[1] + '-' + parts[2] + '-' + parts[0];
+        label = displayDate;
+        // Parse as local midnight to avoid UTC offset making today look overdue
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
         if (!isNaN(d)) {
-          if (d < today)     { cls = "due-overdue"; label = "&#9888; " + r.due_date; }
+          if (d < today)     { cls = "due-overdue"; label = "&#9888; " + displayDate; }
           else if (d <= soon){ cls = "due-soon"; }
           else               { cls = "due-ok"; }
         }
