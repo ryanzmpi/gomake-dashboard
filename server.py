@@ -157,7 +157,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     const rawDate = order.dueDate || order.due_date || order.deliveryDate || order.requiredDate || "";
     let dueDate = String(rawDate);
     if (dueDate.includes("T")) {
-      try { dueDate = new Date(rawDate).toISOString().split("T")[0]; } catch(e) {}
+      try {
+        const d = new Date(rawDate);
+        dueDate = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      } catch(e) {}
     }
     const worksNames = String(order.worksNames || "").replace(/,\\s*$/,"").trim();
     const notes = String(order.notes || "").trim();
@@ -184,8 +187,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         page++;
       }
 
-      // Summary counts
-      const todayStr = new Date().toISOString().split("T")[0];
+      // Summary counts — use local date, not UTC
+      const _t = new Date();
+      const todayStr = _t.getFullYear() + '-' + String(_t.getMonth()+1).padStart(2,'0') + '-' + String(_t.getDate()).padStart(2,'0');
       const dueToday = allOrders.filter(r => r.due_date === todayStr).length;
       const doneToday = rawOrders.filter(o => {
         const isClosed = String(o.statusTitleText || "").toLowerCase().includes("closed");
