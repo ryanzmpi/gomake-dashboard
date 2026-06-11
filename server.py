@@ -158,8 +158,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     let dueDate = String(rawDate);
     if (dueDate.includes("T")) {
       try {
-        const d = new Date(rawDate);
-        dueDate = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        // Interpret the timestamp in Pacific time
+        dueDate = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Los_Angeles'}).format(new Date(rawDate));
       } catch(e) {}
     }
     const worksNames = String(order.worksNames || "").replace(/,\\s*$/,"").trim();
@@ -187,9 +187,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         page++;
       }
 
-      // Summary counts — use local date, not UTC
-      const _t = new Date();
-      const todayStr = _t.getFullYear() + '-' + String(_t.getMonth()+1).padStart(2,'0') + '-' + String(_t.getDate()).padStart(2,'0');
+      // Summary counts — use Pacific time
+      const todayStr = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Los_Angeles'}).format(new Date());
       const dueToday = allOrders.filter(r => r.due_date === todayStr).length;
       const doneToday = rawOrders.filter(o => {
         const isClosed = String(o.statusTitleText || "").toLowerCase().includes("closed");
@@ -229,7 +228,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       document.getElementById("tableContainer").innerHTML = '<div class="state"><div class="icon">&#128269;</div>No orders found.</div>';
       return;
     }
-    const today = new Date(); today.setHours(0,0,0,0);
+    const todayPT = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Los_Angeles'}).format(new Date());
+    const today = new Date(todayPT + 'T00:00:00');
     const soon = new Date(today); soon.setDate(soon.getDate() + 3);
     const tBody = rows.map(r => {
       let cls = "due-none", label = "—";
