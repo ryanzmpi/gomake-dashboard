@@ -347,6 +347,42 @@ async def get_orders(page: int = Query(0, ge=0)):
             raise HTTPException(status_code=502, detail=f"Could not reach GoMake: {e}")
 
 
+@app.get("/api/debug/dates")
+async def debug_dates():
+    """Returns raw dueDate values for the first page of orders — for timezone debugging."""
+    if not CLIENT_ID or not CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="Server credentials not configured.")
+
+    url = f"{GOMAKE_BASE}/sales-orders/list"
+    headers = {
+        "X-Client-Id": CLIENT_ID,
+        "X-Client-Secret": CLIENT_SECRET,
+        "Content-Type": "application/json",
+    }
+    body = {"model": {"pageSize": PAGE_SIZE, "pageNumber": 1}}
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        try:
+            resp = await client.post(url, headers=headers, json=body)
+            resp.raise_for_status()
+            data = resp.json()
+            orders = data.get("data", {}).get("data", [])
+            return [
+                {
+                    "number": o.get("number") or o.get("orderNumber") or o.get("id"),
+                    "rawDueDate": o.get("dueDate") or o.get("due_date") or o.get("deliveryDate"),
+                    "status": o.get("statusTitleText"),
+                    "deliveryStatus": o.get("deliveryStatus"),
+                }
+                for o in orders
+            ]
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(status_code=e.response.status_code,
+                                detail=f"GoMake API error: {e.response.text}")
+        except httpx.RequestError as e:
+            raise HTTPException(status_code=502, detail=f"Could not reach GoMake: {e}")
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
