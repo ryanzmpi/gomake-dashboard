@@ -155,13 +155,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   function extractFields(order) {
     const orderNumber = order.number || order.orderNumber || order.orderId || order.id || "";
     const rawDate = order.dueDate || order.due_date || order.deliveryDate || order.requiredDate || "";
-    let dueDate = String(rawDate);
-    if (dueDate.includes("T")) {
-      try {
-        // Interpret the timestamp in Pacific time
-        dueDate = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Los_Angeles'}).format(new Date(rawDate));
-      } catch(e) {}
-    }
+    // Take the date portion directly from GoMake's string — no timezone conversion
+    let dueDate = String(rawDate).substring(0, 10);
     const worksNames = String(order.worksNames || "").replace(/,\\s*$/,"").trim();
     const notes = String(order.notes || "").trim();
     return { order_number: String(orderNumber), due_date: dueDate, works_names: worksNames, notes: notes };
