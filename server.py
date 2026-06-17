@@ -347,6 +347,31 @@ async def get_orders(page: int = Query(0, ge=0)):
             raise HTTPException(status_code=502, detail=f"Could not reach GoMake: {e}")
 
 
+@app.get("/api/jobs/{job_number}/status")
+async def get_job_status(job_number: str):
+    """Fetch status for a single job from GoMake."""
+    if not CLIENT_ID or not CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="Server credentials not configured.")
+
+    url = f"{GOMAKE_BASE}/jobs/get-job-status-by-job-number/{job_number}"
+    headers = {
+        "X-Client-Id": CLIENT_ID,
+        "X-Client-Secret": CLIENT_SECRET,
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        try:
+            resp = await client.get(url, headers=headers)
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(status_code=e.response.status_code,
+                                detail=f"GoMake API error: {e.response.text}")
+        except httpx.RequestError as e:
+            raise HTTPException(status_code=502, detail=f"Could not reach GoMake: {e}")
+
+
 @app.get("/api/debug/order/{order_number}")
 async def debug_order(order_number: str):
     """Returns the full raw GoMake payload for a specific order number."""
