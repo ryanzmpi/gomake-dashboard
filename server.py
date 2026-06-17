@@ -347,6 +347,43 @@ async def get_orders(page: int = Query(0, ge=0)):
             raise HTTPException(status_code=502, detail=f"Could not reach GoMake: {e}")
 
 
+@app.get("/api/debug/order/{order_number}")
+async def debug_order(order_number: str):
+    """Returns the full raw GoMake payload for a specific order number."""
+    if not CLIENT_ID or not CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="Server credentials not configured.")
+
+    url = f"{GOMAKE_BASE}/sales-orders/list"
+    headers = {
+        "X-Client-Id": CLIENT_ID,
+        "X-Client-Secret": CLIENT_SECRET,
+        "Content-Type": "application/json",
+    }
+
+    # Search through pages to find the order
+    for page_num in range(1, 20):
+        body = {"model": {"pageSize": PAGE_SIZE, "pageNumber": page_num}}
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                resp = await client.post(url, headers=headers, json=body)
+                resp.raise_for_status()
+                data = resp.json()
+                orders = data.get("data", {}).get("data", [])
+                if not orders:
+                    break
+                for o in orders:
+                    num = str(o.get("number") or o.get("orderNumber") or o.get("id") or "")
+                    if num == order_number:
+                        return o
+                if len(orders) < PAGE_SIZE:
+                    break
+            except httpx.HTTPStatusError as e:
+                raise HTTPException(status_code=e.response.status_code,
+                                    detail=f"GoMake API error: {e.response.text}")
+
+    raise HTTPException(status_code=404, detail=f"Order {order_number} not found.")
+
+
 @app.get("/api/debug/dates")
 async def debug_dates():
     """Returns raw dueDate values for the first page of orders — for timezone debugging."""
