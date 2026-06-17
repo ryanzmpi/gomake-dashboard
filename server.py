@@ -240,7 +240,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     if (!jobStatuses.length) return '<span style="color:#9ca3af">&#8212;</span>';
     return jobStatuses.map(function(job) {
       const badges = (job.jobStatuses || []).map(function(s) {
-        const c = statusColor(s.status);
+        const c = statusColor(s.status, s.currentStation);
         const label = esc(s.status) + (s.currentStation ? ' @ ' + esc(s.currentStation) : '');
         return '<span class="job-status-badge" style="background:' + c.bg + ';color:' + c.fg + '">' + label + '</span>';
       }).join('');
@@ -248,15 +248,16 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }).join('');
   }
 
-  function statusColor(status) {
-    const s = String(status).toLowerCase();
-    if (s.includes('printing'))                          return {bg:'#30C5FF', fg:'#fff'};
-    if (s.includes('gathering'))                         return {bg:'#FF793B', fg:'#fff'};
-    if (s.includes('wait'))                              return {bg:'#f3f4f6', fg:'#6b7280'};
+  function statusColor(status, station) {
+    const s = String(status || '').toLowerCase();
+    const st = String(station || '').toLowerCase();
+    if (s.includes('printing') || st.includes('printing'))   return {bg:'#30C5FF', fg:'#fff'};
+    if (s.includes('gathering') || st.includes('gathering')) return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
     if (s.includes('progress')||s.includes('active')||s.includes('run')) return {bg:'#dbeafe', fg:'#1d4ed8'};
     if (s.includes('done')||s.includes('complet')||s.includes('finish')) return {bg:'#dcfce7', fg:'#16a34a'};
-    if (s.includes('hold')||s.includes('pause'))         return {bg:'#fef3c7', fg:'#d97706'};
-    if (s.includes('cancel')||s.includes('error'))       return {bg:'#fee2e2', fg:'#dc2626'};
+    if (s.includes('hold')||s.includes('pause'))              return {bg:'#fef3c7', fg:'#d97706'};
+    if (s.includes('cancel')||s.includes('error'))            return {bg:'#fee2e2', fg:'#dc2626'};
     return {bg:'#f3f4f6', fg:'#6b7280'};
   }
 
