@@ -250,6 +250,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
   function statusColor(status) {
     const s = String(status).toLowerCase();
+    if (s.includes('printing'))                          return {bg:'#30C5FF', fg:'#fff'};
+    if (s.includes('gathering'))                         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('wait'))                              return {bg:'#f3f4f6', fg:'#6b7280'};
     if (s.includes('progress')||s.includes('active')||s.includes('run')) return {bg:'#dbeafe', fg:'#1d4ed8'};
     if (s.includes('done')||s.includes('complet')||s.includes('finish')) return {bg:'#dcfce7', fg:'#16a34a'};
