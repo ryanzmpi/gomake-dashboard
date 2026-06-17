@@ -11,6 +11,7 @@ Run:
 Then open http://localhost:8000 in your browser.
 """
 
+import asyncio
 import os
 from contextlib import asynccontextmanager
 
@@ -58,9 +59,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     table { width: 100%; border-collapse: collapse; }
     thead th { text-align: left; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; padding: 10px 16px; border-bottom: 2px solid #e5e7eb; cursor: pointer; user-select: none; }
     thead th:hover { color: #2e3092; }
+    thead th.no-sort { cursor: default; }
+    thead th.no-sort:hover { color: #6b7280; }
     tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.1s; }
     tbody tr:hover { background: #f8faff; }
-    tbody td { padding: 12px 16px; font-size: 28px; }
+    tbody td { padding: 12px 16px; font-size: 28px; vertical-align: top; }
     .order-num { font-weight: 600; color: #2e3092; font-family: monospace; }
     .due-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 24px; font-weight: 600; }
     .due-overdue { background: #fee2e2; color: #dc2626; }
@@ -81,32 +84,37 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     .stat-value { font-size: 48px; font-weight: 700; color: #1a202c; }
     .stat-card.due .stat-value { color: #d97706; }
     .stat-card.done .stat-value { color: #16a34a; }
+    .job-item { margin-bottom: 6px; }
+    .job-item:last-child { margin-bottom: 0; }
+    .job-item strong { display: block; font-size: 24px; color: #1a202c; margin-bottom: 3px; }
+    .job-status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 22px; font-weight: 600; margin-right: 4px; margin-bottom: 2px; }
+    .status-loading { color: #9ca3af; font-size: 22px; font-style: italic; }
   </style>
 </head>
 <body>
 <header>
   <div>
     <h1>Marathon Printing Orders Dashboard</h1>
-    <div class="subtitle">Sales orders · order numbers &amp; due dates</div>
+    <div class="subtitle">Sales orders &middot; order numbers &amp; due dates</div>
   </div>
-  <div class="status-bar" id="statusBar">Loading…</div>
+  <div class="status-bar" id="statusBar">Loading&hellip;</div>
 </header>
 <main>
   <div class="summary">
     <div class="stat-card due">
       <div class="stat-label">Due Today</div>
-      <div class="stat-value" id="dueTodayCount">—</div>
+      <div class="stat-value" id="dueTodayCount">&mdash;</div>
     </div>
     <div class="stat-card done">
       <div class="stat-label">Closed / Shipped Today</div>
-      <div class="stat-value" id="doneTodayCount">—</div>
+      <div class="stat-value" id="doneTodayCount">&mdash;</div>
     </div>
   </div>
   <div class="card">
     <div class="toolbar">
       <div class="toolbar-left">
         <strong style="font-size:30px">Sales Orders <span class="badge" id="orderCount">0</span></strong>
-        <input class="search-box" type="search" id="searchBox" placeholder="Search orders…" oninput="renderTable()" />
+        <input class="search-box" type="search" id="searchBox" placeholder="Search orders&hellip;" oninput="renderTable()" />
       </div>
       <div class="toolbar-left">
         <div class="field-sm">
@@ -124,7 +132,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </div>
     </div>
     <div id="tableContainer">
-      <div class="state"><span class="spinner"></span> Fetching orders…</div>
+      <div class="state"><span class="spinner"></span> Fetching orders&hellip;</div>
     </div>
   </div>
 </main>
@@ -133,6 +141,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   let sortCol = "due_date";
   let sortAsc = true;
   let refreshTimer = null;
+  let renderPending = false;
 
   async function fetchPage(page) {
     const res = await fetch('/api/orders?page=' + page);
@@ -144,7 +153,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   }
 
   function extractOrders(data) {
-    // GoMake shape: { success, data: { data: [...orders], totalItems } }
     if (data && data.data && Array.isArray(data.data.data)) return data.data.data;
     if (data && Array.isArray(data.data)) return data.data;
     if (data && Array.isArray(data.orders)) return data.orders;
@@ -153,13 +161,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   }
 
   function extractFields(order) {
-    const orderNumber = order.number || order.orderNumber || order.orderId || order.id || "";
+    const orderId = order.id || "";
+    const orderNumber = order.number || order.orderNumber || order.orderId || "";
     const rawDate = order.dueDate || order.due_date || order.deliveryDate || order.requiredDate || "";
-    // Take the date portion directly from GoMake's string — no timezone conversion
     let dueDate = String(rawDate).substring(0, 10);
-    const worksNames = String(order.worksNames || "").replace(/,\\s*$/,"").trim();
+    const worksNames = String(order.worksNames || "").replace(/,\\s*$/, "").trim();
     const notes = String(order.notes || "").trim();
-    return { order_number: String(orderNumber), due_date: dueDate, works_names: worksNames, notes: notes };
+    return { id: orderId, order_number: String(orderNumber), due_date: dueDate, works_names: worksNames, notes: notes, jobStatuses: null };
   }
 
   async function loadOrders() {
@@ -182,7 +190,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         page++;
       }
 
-      // Summary counts — use Pacific time
       const todayStr = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Los_Angeles'}).format(new Date());
       const dueToday = allOrders.filter(r => r.due_date === todayStr).length;
       const doneToday = rawOrders.filter(o => {
@@ -196,8 +203,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
       const now = new Date().toLocaleTimeString();
       document.getElementById("statusBar").innerHTML = '&#10003; ' + allOrders.length + ' orders &nbsp;&middot;&nbsp; Updated ' + now;
+
       renderTable();
       scheduleRefresh();
+      loadJobStatuses();
     } catch (err) {
       showError("Error: " + err.message);
       document.getElementById("statusBar").textContent = "Error";
@@ -206,16 +215,60 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
   }
 
+  async function loadJobStatuses() {
+    if (!allOrders.length) return;
+    await Promise.all(allOrders.map(async (order, i) => {
+      if (!order.id) return;
+      try {
+        const res = await fetch('/api/orders/' + order.id + '/jobs');
+        if (res.ok) {
+          allOrders[i].jobStatuses = await res.json();
+          debouncedRender();
+        }
+      } catch (e) { /* ignore */ }
+    }));
+  }
+
+  function debouncedRender() {
+    if (renderPending) return;
+    renderPending = true;
+    setTimeout(() => { renderPending = false; renderTable(); }, 250);
+  }
+
+  function renderJobStatuses(jobStatuses) {
+    if (jobStatuses === null) return '<span class="status-loading">Loading&hellip;</span>';
+    if (!jobStatuses.length) return '<span style="color:#9ca3af">&#8212;</span>';
+    return jobStatuses.map(function(job) {
+      const badges = (job.jobStatuses || []).map(function(s) {
+        const c = statusColor(s.status);
+        const label = esc(s.status) + (s.currentStation ? ' @ ' + esc(s.currentStation) : '');
+        return '<span class="job-status-badge" style="background:' + c.bg + ';color:' + c.fg + '">' + label + '</span>';
+      }).join('');
+      return '<div class="job-item"><strong>' + esc(job.productName || '') + (job.quantity ? ' &times;' + job.quantity : '') + '</strong>' + (badges || '<span style="color:#9ca3af">no status</span>') + '</div>';
+    }).join('');
+  }
+
+  function statusColor(status) {
+    const s = String(status).toLowerCase();
+    if (s.includes('wait'))                              return {bg:'#f3f4f6', fg:'#6b7280'};
+    if (s.includes('progress')||s.includes('active')||s.includes('run')) return {bg:'#dbeafe', fg:'#1d4ed8'};
+    if (s.includes('done')||s.includes('complet')||s.includes('finish')) return {bg:'#dcfce7', fg:'#16a34a'};
+    if (s.includes('hold')||s.includes('pause'))         return {bg:'#fef3c7', fg:'#d97706'};
+    if (s.includes('cancel')||s.includes('error'))       return {bg:'#fee2e2', fg:'#dc2626'};
+    return {bg:'#f3f4f6', fg:'#6b7280'};
+  }
+
   function renderTable() {
     const query = document.getElementById("searchBox").value.toLowerCase();
     let rows = allOrders.filter(r =>
-      r.order_number.toLowerCase().includes(query) || r.due_date.toLowerCase().includes(query)
+      r.order_number.toLowerCase().includes(query) ||
+      r.due_date.toLowerCase().includes(query) ||
+      r.works_names.toLowerCase().includes(query) ||
+      r.notes.toLowerCase().includes(query)
     );
     rows.sort((a, b) => {
-      // Primary: due_date ascending
       const dateCmp = (a.due_date || "").localeCompare(b.due_date || "");
       if (dateCmp !== 0) return dateCmp;
-      // Secondary: notes ascending
       return (a.notes || "").localeCompare(b.notes || "");
     });
     document.getElementById("orderCount").textContent = rows.length;
@@ -227,27 +280,33 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     const today = new Date(todayPT + 'T00:00:00');
     const soon = new Date(today); soon.setDate(soon.getDate() + 3);
     const tBody = rows.map(r => {
-      let cls = "due-none", label = "—";
+      let cls = "due-none", label = "&#8212;";
       if (r.due_date) {
         const parts = r.due_date.split('-');
         const displayDate = parts[1] + '-' + parts[2] + '-' + parts[0];
         label = displayDate;
-        // Parse as local midnight to avoid UTC offset making today look overdue
         const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
         if (!isNaN(d)) {
-          if (d < today)     { cls = "due-overdue"; label = "&#9888; " + displayDate; }
-          else if (d <= soon){ cls = "due-soon"; }
-          else               { cls = "due-ok"; }
+          if (d < today)      { cls = "due-overdue"; label = "&#9888; " + displayDate; }
+          else if (d <= soon) { cls = "due-soon"; }
+          else                { cls = "due-ok"; }
         }
       }
-      return '<tr><td class="order-num">' + esc(r.order_number) + '</td><td><span class="due-badge ' + cls + '">' + label + '</span></td><td>' + esc(r.works_names) + '</td><td style="white-space:pre-line;color:#4a5568">' + esc(r.notes) + '</td></tr>';
-    }).join("");
+      return '<tr>' +
+        '<td class="order-num">' + esc(r.order_number) + '</td>' +
+        '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
+        '<td>' + esc(r.works_names) + '</td>' +
+        '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes) + '</td>' +
+        '<td>' + renderJobStatuses(r.jobStatuses) + '</td>' +
+        '</tr>';
+    }).join('');
     document.getElementById("tableContainer").innerHTML =
       '<table><thead><tr>' +
-      '<th data-col="order_number" onclick="sortBy(this.dataset.col)">Order Number ' + sortIcon("order_number") + '</th>' +
+      '<th data-col="order_number" onclick="sortBy(this.dataset.col)">Order # ' + sortIcon("order_number") + '</th>' +
       '<th data-col="due_date" onclick="sortBy(this.dataset.col)">Due Date ' + sortIcon("due_date") + '</th>' +
       '<th data-col="works_names" onclick="sortBy(this.dataset.col)">Jobs ' + sortIcon("works_names") + '</th>' +
       '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
+      '<th class="no-sort">Job Status</th>' +
       '</tr></thead><tbody>' + tBody + '</tbody></table>' +
       '<div class="legend">&#127002; On time &nbsp; &#127601; Due within 3 days &nbsp; &#128308; Overdue &nbsp; &#11036; No date</div>';
   }
@@ -260,8 +319,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
   function downloadCSV() {
     if (!allOrders.length) { alert("No orders loaded yet."); return; }
-    const csv = [["Order Number","Due Date","Jobs","Notes"]].concat(allOrders.map(r => [r.order_number, r.due_date, r.works_names, r.notes]))
-      .map(r => r.map(v => '"' + v + '"').join(",")).join("\\n");
+    const csv = [["Order Number","Due Date","Jobs","Notes"]].concat(
+      allOrders.map(r => [r.order_number, r.due_date, r.works_names, r.notes])
+    ).map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(",")).join("\\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     a.download = "gomake_orders_" + new Date().toISOString().split("T")[0] + ".csv";
@@ -280,7 +340,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     btn.disabled = on;
     btn.textContent = on ? "Loading…" : "↻ Refresh";
     if (on) document.getElementById("tableContainer").innerHTML =
-      '<div class="state"><span class="spinner"></span> Fetching orders…</div>';
+      '<div class="state"><span class="spinner"></span> Fetching orders&hellip;</div>';
   }
 
   function showError(msg) {
@@ -331,7 +391,7 @@ async def get_orders(page: int = Query(0, ge=0)):
     body = {
         "model": {
             "pageSize": PAGE_SIZE,
-            "pageNumber": page + 1,  # GoMake uses 1-based page numbers
+            "pageNumber": page + 1,
         }
     }
 
@@ -347,13 +407,12 @@ async def get_orders(page: int = Query(0, ge=0)):
             raise HTTPException(status_code=502, detail=f"Could not reach GoMake: {e}")
 
 
-@app.get("/api/jobs/{job_number}/status")
-async def get_job_status(job_number: str):
-    """Fetch status for a single job from GoMake."""
+@app.get("/api/orders/{order_id}/jobs")
+async def get_order_jobs(order_id: str):
+    """Fetch all job statuses for an order's document items."""
     if not CLIENT_ID or not CLIENT_SECRET:
         raise HTTPException(status_code=500, detail="Server credentials not configured.")
 
-    url = f"{GOMAKE_BASE}/jobs/get-job-status-by-job-number/{job_number}"
     headers = {
         "X-Client-Id": CLIENT_ID,
         "X-Client-Secret": CLIENT_SECRET,
@@ -361,15 +420,40 @@ async def get_job_status(job_number: str):
     }
 
     async with httpx.AsyncClient(timeout=30) as client:
+        # Step 1: get order detail to find documentItems
         try:
-            resp = await client.get(url, headers=headers)
+            resp = await client.get(f"{GOMAKE_BASE}/sales-orders/{order_id}", headers=headers)
             resp.raise_for_status()
-            return resp.json()
+            order_data = resp.json()
         except httpx.HTTPStatusError as e:
             raise HTTPException(status_code=e.response.status_code,
                                 detail=f"GoMake API error: {e.response.text}")
         except httpx.RequestError as e:
             raise HTTPException(status_code=502, detail=f"Could not reach GoMake: {e}")
+
+        document_items = order_data.get("data", {}).get("documentItems", [])
+
+        # Step 2: fetch job statuses in parallel
+        async def fetch_job_status(item):
+            item_id = item.get("id")
+            product_name = item.get("productName", "")
+            quantity = item.get("quantity")
+            if not item_id:
+                return {"productName": product_name, "quantity": quantity, "jobStatuses": []}
+            try:
+                r = await client.get(f"{GOMAKE_BASE}/jobs/get-job-status/{item_id}", headers=headers)
+                r.raise_for_status()
+                data = r.json()
+                return {
+                    "productName": product_name,
+                    "quantity": quantity,
+                    "jobStatuses": data.get("data", {}).get("jobStatus", [])
+                }
+            except Exception:
+                return {"productName": product_name, "quantity": quantity, "jobStatuses": []}
+
+        results = await asyncio.gather(*[fetch_job_status(item) for item in document_items])
+        return list(results)
 
 
 @app.get("/api/debug/order/{order_number}")
@@ -385,7 +469,6 @@ async def debug_order(order_number: str):
         "Content-Type": "application/json",
     }
 
-    # Search through pages to find the order
     for page_num in range(1, 20):
         body = {"model": {"pageSize": PAGE_SIZE, "pageNumber": page_num}}
         async with httpx.AsyncClient(timeout=30) as client:
@@ -411,7 +494,7 @@ async def debug_order(order_number: str):
 
 @app.get("/api/debug/dates")
 async def debug_dates():
-    """Returns raw dueDate values for the first page of orders — for timezone debugging."""
+    """Returns raw dueDate values for the first page of orders."""
     if not CLIENT_ID or not CLIENT_SECRET:
         raise HTTPException(status_code=500, detail="Server credentials not configured.")
 
