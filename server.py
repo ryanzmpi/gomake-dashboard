@@ -61,6 +61,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     thead th:hover { color: #2e3092; }
     thead th.no-sort { cursor: default; }
     thead th.no-sort:hover { color: #6b7280; }
+    .section-header td { font-size: 24px; font-weight: 700; padding: 10px 16px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: none; }
+    .section-overdue  td { background: #fee2e2; color: #dc2626; }
+    .section-today    td { background: #fef3c7; color: #b45309; }
+    .section-future   td { background: #dcfce7; color: #15803d; }
     tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.1s; }
     tbody tr:hover { background: #f8faff; }
     tbody td { padding: 12px 16px; font-size: 28px; vertical-align: top; }
@@ -282,13 +286,24 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     const todayPT = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Los_Angeles'}).format(new Date());
     const today = new Date(todayPT + 'T00:00:00');
     const soon = new Date(today); soon.setDate(soon.getDate() + 3);
-    const tBody = rows.map(r => {
+
+    function rowDate(r) {
+      if (!r.due_date) return null;
+      const p = r.due_date.split('-');
+      return new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
+    }
+
+    const overdue = rows.filter(r => { const d = rowDate(r); return d && d < today; });
+    const todayRows = rows.filter(r => { const d = rowDate(r); return d && d.getTime() === today.getTime(); });
+    const future = rows.filter(r => { const d = rowDate(r); return !d || d > today; });
+
+    function buildRow(r) {
       let cls = "due-none", label = "&#8212;";
       if (r.due_date) {
         const parts = r.due_date.split('-');
         const displayDate = parts[1] + '-' + parts[2] + '-' + parts[0];
         label = displayDate;
-        const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+        const d = rowDate(r);
         if (!isNaN(d)) {
           if (d < today)      { cls = "due-overdue"; label = "&#9888; " + displayDate; }
           else if (d <= soon) { cls = "due-soon"; }
@@ -302,7 +317,16 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes) + '</td>' +
         '<td>' + renderJobStatuses(r.jobStatuses) + '</td>' +
         '</tr>';
-    }).join('');
+    }
+
+    function sectionHeader(cls, label, count) {
+      return '<tr class="section-header ' + cls + '"><td colspan="5">' + label + ' (' + count + ')</td></tr>';
+    }
+
+    let tBody = '';
+    if (overdue.length)   tBody += sectionHeader('section-overdue', '&#9888; Late / Past Due', overdue.length)   + overdue.map(buildRow).join('');
+    if (todayRows.length) tBody += sectionHeader('section-today',   '&#128197; Due Today',     todayRows.length) + todayRows.map(buildRow).join('');
+    if (future.length)    tBody += sectionHeader('section-future',  '&#128336; Upcoming',       future.length)    + future.map(buildRow).join('');
     document.getElementById("tableContainer").innerHTML =
       '<table><thead><tr>' +
       '<th data-col="order_number" onclick="sortBy(this.dataset.col)">Order # ' + sortIcon("order_number") + '</th>' +
