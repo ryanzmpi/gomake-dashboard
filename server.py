@@ -40,65 +40,65 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     header { background: #22475A; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
     header .header-left { display: flex; align-items: center; gap: 20px; }
     header img.logo { height: 70px; width: auto; }
-    header h1 { font-size: 40px; font-weight: 600; }
-    .status-bar { font-size: 24px; opacity: 0.85; text-align: right; }
+    header h1 { font-size: 36px; font-weight: 600; }
+    .status-bar { font-size: 22px; opacity: 0.85; text-align: right; }
     nav { background: #1a3648; display: flex; gap: 4px; padding: 0 24px; }
-    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 26px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
+    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 23px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
     nav a:hover { color: white; }
     nav a.active { color: white; border-bottom-color: #E8572A; }
     main { width: 100%; margin: 32px auto; padding: 0 24px; box-sizing: border-box; }
     .card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 24px; }
     .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; justify-content: space-between; }
     .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .badge { background: #ede9fe; color: #22475A; font-size: 24px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
+    .badge { background: #ede9fe; color: #22475A; font-size: 22px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
     .field-sm { display: flex; flex-direction: column; }
-    .field-sm label { font-size: 24px; font-weight: 600; color: #4a5568; margin-bottom: 4px; }
-    .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 26px; background: white; outline: none; }
-    button { padding: 8px 18px; border-radius: 6px; font-size: 26px; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s, opacity 0.2s; }
+    .field-sm label { font-size: 22px; font-weight: 600; color: #4a5568; margin-bottom: 4px; }
+    .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 23px; background: white; outline: none; }
+    button { padding: 8px 18px; border-radius: 6px; font-size: 23px; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s, opacity 0.2s; }
     .btn-primary { background: #22475A; color: white; }
     .btn-primary:hover { background: #1a3648; }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-secondary { background: #e5e7eb; color: #374151; }
     .btn-secondary:hover { background: #d1d5db; }
-    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 26px; width: 220px; outline: none; }
+    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 23px; width: 220px; outline: none; }
     .search-box:focus { border-color: #22475A; }
     table { width: 100%; border-collapse: collapse; }
-    thead th { text-align: left; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; padding: 10px 16px; border-bottom: 2px solid #e5e7eb; cursor: pointer; user-select: none; }
+    thead th { text-align: left; font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; padding: 10px 16px; border-bottom: 2px solid #e5e7eb; cursor: pointer; user-select: none; }
     thead th:hover { color: #22475A; }
     thead th.no-sort { cursor: default; }
     thead th.no-sort:hover { color: #6b7280; }
-    .section-header td { font-size: 24px; font-weight: 700; padding: 10px 16px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: none; }
+    .section-header td { font-size: 22px; font-weight: 700; padding: 10px 16px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: none; }
     .section-overdue  td { background: #fee2e2; color: #dc2626; }
     .section-today    td { background: #fef3c7; color: #b45309; }
     .section-future   td { background: #dcfce7; color: #15803d; }
     tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.1s; }
     tbody tr:hover { background: #f8faff; }
-    tbody td { padding: 12px 16px; font-size: 28px; vertical-align: top; }
+    tbody td { padding: 12px 16px; font-size: 25px; vertical-align: top; }
     .order-num { font-weight: 600; color: #22475A; font-family: monospace; }
-    .due-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 24px; font-weight: 600; }
+    .due-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 22px; font-weight: 600; }
     .due-overdue { background: #fee2e2; color: #dc2626; }
     .due-soon    { background: #fef3c7; color: #d97706; }
     .due-ok      { background: #dcfce7; color: #16a34a; }
     .due-none    { background: #f3f4f6; color: #6b7280; }
-    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 28px; }
-    .state .icon { font-size: 32px; margin-bottom: 8px; }
+    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 25px; }
+    .state .icon { font-size: 29px; margin-bottom: 8px; }
     .error-msg { color: #dc2626; }
     .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #22475A; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .legend { margin-top: 14px; font-size: 24px; color: #9ca3af; padding: 0 4px; }
+    .legend { margin-top: 14px; font-size: 22px; color: #9ca3af; padding: 0 4px; }
     .summary { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
     .stat-card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 20px 28px; flex: 1; min-width: 200px; border-top: 4px solid #e5e7eb; }
     .stat-card.due { border-top-color: #d97706; }
     .stat-card.done { border-top-color: #16a34a; }
-    .stat-label { font-size: 24px; color: #6b7280; font-weight: 600; margin-bottom: 6px; }
-    .stat-value { font-size: 48px; font-weight: 700; color: #1a202c; }
+    .stat-label { font-size: 22px; color: #6b7280; font-weight: 600; margin-bottom: 6px; }
+    .stat-value { font-size: 43px; font-weight: 700; color: #1a202c; }
     .stat-card.due .stat-value { color: #d97706; }
     .stat-card.done .stat-value { color: #16a34a; }
     .job-item { margin-bottom: 6px; }
     .job-item:last-child { margin-bottom: 0; }
-    .job-item strong { display: block; font-size: 24px; color: #1a202c; margin-bottom: 3px; }
-    .job-status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 22px; font-weight: 600; margin-right: 4px; margin-bottom: 2px; }
-    .status-loading { color: #9ca3af; font-size: 22px; font-style: italic; }
+    .job-item strong { display: block; font-size: 22px; color: #1a202c; margin-bottom: 3px; }
+    .job-status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 20px; font-weight: 600; margin-right: 4px; margin-bottom: 2px; }
+    .status-loading { color: #9ca3af; font-size: 20px; font-style: italic; }
   </style>
 </head>
 <body>
@@ -127,7 +127,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   <div class="card">
     <div class="toolbar">
       <div class="toolbar-left">
-        <strong style="font-size:30px">Sales Orders <span class="badge" id="orderCount">0</span></strong>
+        <strong style="font-size: 27px">Sales Orders <span class="badge" id="orderCount">0</span></strong>
         <input class="search-box" type="search" id="searchBox" placeholder="Search orders&hellip;" oninput="renderTable()" />
       </div>
       <div class="toolbar-left">
@@ -425,47 +425,47 @@ PRESS_HTML = """<!DOCTYPE html>
     header { background: #22475A; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
     header .header-left { display: flex; align-items: center; gap: 20px; }
     header img.logo { height: 70px; width: auto; }
-    header h1 { font-size: 40px; font-weight: 600; }
-    .status-bar { font-size: 24px; opacity: 0.85; text-align: right; }
+    header h1 { font-size: 36px; font-weight: 600; }
+    .status-bar { font-size: 22px; opacity: 0.85; text-align: right; }
     nav { background: #1a3648; display: flex; gap: 4px; padding: 0 24px; }
-    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 26px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
+    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 23px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
     nav a:hover { color: white; }
     nav a.active { color: white; border-bottom-color: #E8572A; }
     main { width: 100%; margin: 32px auto; padding: 0 24px; box-sizing: border-box; }
     .card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 24px; }
     .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; justify-content: space-between; }
     .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .badge { background: #ede9fe; color: #22475A; font-size: 24px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
+    .badge { background: #ede9fe; color: #22475A; font-size: 22px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
     .field-sm { display: flex; flex-direction: column; }
-    .field-sm label { font-size: 24px; font-weight: 600; color: #4a5568; margin-bottom: 4px; }
-    .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 26px; background: white; outline: none; }
-    button { padding: 8px 18px; border-radius: 6px; font-size: 26px; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s, opacity 0.2s; }
+    .field-sm label { font-size: 22px; font-weight: 600; color: #4a5568; margin-bottom: 4px; }
+    .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 23px; background: white; outline: none; }
+    button { padding: 8px 18px; border-radius: 6px; font-size: 23px; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s, opacity 0.2s; }
     .btn-primary { background: #22475A; color: white; }
     .btn-primary:hover { background: #1a3648; }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 26px; width: 220px; outline: none; }
+    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 23px; width: 220px; outline: none; }
     .search-box:focus { border-color: #22475A; }
     table { width: 100%; border-collapse: collapse; }
-    thead th { text-align: left; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; padding: 10px 16px; border-bottom: 2px solid #e5e7eb; cursor: pointer; user-select: none; }
+    thead th { text-align: left; font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; padding: 10px 16px; border-bottom: 2px solid #e5e7eb; cursor: pointer; user-select: none; }
     thead th:hover { color: #22475A; }
     thead th.no-sort { cursor: default; }
     thead th.no-sort:hover { color: #6b7280; }
     tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.1s; }
     tbody tr:hover { background: #f8faff; }
-    tbody td { padding: 12px 16px; font-size: 28px; vertical-align: top; }
+    tbody td { padding: 12px 16px; font-size: 25px; vertical-align: top; }
     .order-num { font-weight: 600; color: #22475A; font-family: monospace; }
-    .due-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 24px; font-weight: 600; }
+    .due-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 22px; font-weight: 600; }
     .due-overdue { background: #fee2e2; color: #dc2626; }
     .due-soon    { background: #fef3c7; color: #d97706; }
     .due-ok      { background: #dcfce7; color: #16a34a; }
     .due-none    { background: #f3f4f6; color: #6b7280; }
-    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 28px; }
-    .state .icon { font-size: 32px; margin-bottom: 8px; }
+    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 25px; }
+    .state .icon { font-size: 29px; margin-bottom: 8px; }
     .error-msg { color: #dc2626; }
     .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #22475A; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .job-status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 22px; font-weight: 600; }
-    .section-header td { font-size: 24px; font-weight: 700; padding: 10px 16px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: none; }
+    .job-status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 20px; font-weight: 600; }
+    .section-header td { font-size: 22px; font-weight: 700; padding: 10px 16px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: none; }
     .section-overdue td { background: #fee2e2; color: #dc2626; }
     .section-today   td { background: #fef3c7; color: #b45309; }
     .section-future  td { background: #dcfce7; color: #15803d; }
@@ -487,7 +487,7 @@ PRESS_HTML = """<!DOCTYPE html>
   <div class="card">
     <div class="toolbar">
       <div class="toolbar-left">
-        <strong style="font-size:30px">Press Jobs <span class="badge" id="jobCount">0</span></strong>
+        <strong style="font-size: 27px">Press Jobs <span class="badge" id="jobCount">0</span></strong>
         <input class="search-box" type="search" id="searchBox" placeholder="Search&hellip;" oninput="renderTable()" />
       </div>
       <div class="toolbar-left">
