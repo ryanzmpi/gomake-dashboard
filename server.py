@@ -197,7 +197,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         rawOrders.push(...orders);
         const open = orders.filter(o =>
           !String(o.statusTitleText || "").toLowerCase().includes("closed") &&
-          o.deliveryStatus !== 3
+          o.deliveryStatus !== 3 &&
+          !o.readyDate
         );
         allOrders.push(...open.map(extractFields));
         if (orders.length < 100) break;
@@ -207,10 +208,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       const todayStr = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Los_Angeles'}).format(new Date());
       const dueToday = allOrders.filter(r => r.due_date === todayStr).length;
       const doneToday = rawOrders.filter(o => {
-        const isClosed = String(o.statusTitleText || "").toLowerCase().includes("closed");
-        const isDelivered = o.deliveryStatus === 3;
         const readyDate = String(o.readyDate || "").split("T")[0];
-        return (isClosed || isDelivered) && readyDate === todayStr;
+        return readyDate === todayStr;
       }).length;
       document.getElementById("dueTodayCount").textContent = dueToday;
       document.getElementById("doneTodayCount").textContent = doneToday;
