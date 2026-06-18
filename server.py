@@ -268,6 +268,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
     if (s.includes('progress')||s.includes('active')||s.includes('run')) return {bg:'#dbeafe', fg:'#1d4ed8'};
     if (s.includes('done')||s.includes('complet')||s.includes('finish')) return {bg:'#dcfce7', fg:'#16a34a'};
@@ -679,6 +680,7 @@ PRESS_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
     if (s.includes('progress')||s.includes('active')||s.includes('run')) return {bg:'#dbeafe', fg:'#1d4ed8'};
     if (s.includes('done')||s.includes('complet')||s.includes('finish')) return {bg:'#dcfce7', fg:'#16a34a'};
