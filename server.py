@@ -19,6 +19,7 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 
@@ -32,13 +33,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Marathon Printing Orders Dashboard</title>
+  <title>Orders Dashboard</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a202c; min-height: 100vh; }
-    header { background: #2e3092; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+    header { background: #22475A; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+    header .header-left { display: flex; align-items: center; gap: 20px; }
+    header img.logo { height: 70px; width: auto; }
     header h1 { font-size: 40px; font-weight: 600; }
-    header .subtitle { font-size: 26px; opacity: 0.75; margin-top: 2px; }
     .status-bar { font-size: 24px; opacity: 0.85; text-align: right; }
     main { width: 100%; margin: 32px auto; padding: 0 24px; box-sizing: border-box; }
     .card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 24px; }
@@ -97,9 +99,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 </head>
 <body>
 <header>
-  <div>
-    <h1>Marathon Printing Orders Dashboard</h1>
-    <div class="subtitle">Sales orders &middot; order numbers &amp; due dates</div>
+  <div class="header-left">
+    <img class="logo" src="/static/logo.png" alt="Logo" />
+    <h1>Orders Dashboard</h1>
   </div>
   <div class="status-bar" id="statusBar">Loading&hellip;</div>
 </header>
@@ -396,6 +398,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Marathon Printing Orders Dashboard", lifespan=lifespan)
+
+# Serve logo and other static assets if the static folder exists
+_static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(_static_dir):
+    app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
 
 @app.get("/", response_class=HTMLResponse)
