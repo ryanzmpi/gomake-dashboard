@@ -46,21 +46,21 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     .card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 24px; }
     .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; justify-content: space-between; }
     .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .badge { background: #ede9fe; color: #2e3092; font-size: 24px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
+    .badge { background: #ede9fe; color: #22475A; font-size: 24px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
     .field-sm { display: flex; flex-direction: column; }
     .field-sm label { font-size: 24px; font-weight: 600; color: #4a5568; margin-bottom: 4px; }
     .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 26px; background: white; outline: none; }
     button { padding: 8px 18px; border-radius: 6px; font-size: 26px; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s, opacity 0.2s; }
-    .btn-primary { background: #2e3092; color: white; }
-    .btn-primary:hover { background: #252880; }
+    .btn-primary { background: #22475A; color: white; }
+    .btn-primary:hover { background: #1a3648; }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-secondary { background: #e5e7eb; color: #374151; }
     .btn-secondary:hover { background: #d1d5db; }
     .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 26px; width: 220px; outline: none; }
-    .search-box:focus { border-color: #2e3092; }
+    .search-box:focus { border-color: #22475A; }
     table { width: 100%; border-collapse: collapse; }
     thead th { text-align: left; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; padding: 10px 16px; border-bottom: 2px solid #e5e7eb; cursor: pointer; user-select: none; }
-    thead th:hover { color: #2e3092; }
+    thead th:hover { color: #22475A; }
     thead th.no-sort { cursor: default; }
     thead th.no-sort:hover { color: #6b7280; }
     .section-header td { font-size: 24px; font-weight: 700; padding: 10px 16px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: none; }
@@ -70,7 +70,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.1s; }
     tbody tr:hover { background: #f8faff; }
     tbody td { padding: 12px 16px; font-size: 28px; vertical-align: top; }
-    .order-num { font-weight: 600; color: #2e3092; font-family: monospace; }
+    .order-num { font-weight: 600; color: #22475A; font-family: monospace; }
     .due-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 24px; font-weight: 600; }
     .due-overdue { background: #fee2e2; color: #dc2626; }
     .due-soon    { background: #fef3c7; color: #d97706; }
@@ -79,7 +79,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 28px; }
     .state .icon { font-size: 32px; margin-bottom: 8px; }
     .error-msg { color: #dc2626; }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #2e3092; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #22475A; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .legend { margin-top: 14px; font-size: 24px; color: #9ca3af; padding: 0 4px; }
     .summary { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
