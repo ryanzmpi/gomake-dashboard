@@ -119,6 +119,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <div class="stat-card due">
       <div class="stat-label">Due Today</div>
       <div class="stat-value" id="dueTodayCount">&mdash;</div>
+      <div class="stat-sub" id="dueTodayTotal">&mdash;</div>
     </div>
     <div class="stat-card done">
       <div class="stat-label">Closed / Shipped Today</div>
@@ -208,7 +209,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
 
       const todayStr = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Los_Angeles'}).format(new Date());
-      const dueToday = allOrders.filter(r => r.due_date === todayStr).length;
+      const dueTodayOrders = rawOrders.filter(o => String(o.dueDate || o.due_date || "").substring(0, 10) === todayStr && !o.readyDate);
+      const dueToday = dueTodayOrders.length;
+      const dueTodayTotal = dueTodayOrders.reduce((sum, o) => sum + parseFloat(o.totalPrice || o.totalPayment || 0), 0);
       const doneTodayOrders = rawOrders.filter(o => {
         const readyDate = String(o.readyDate || "").split("T")[0];
         return readyDate === todayStr;
@@ -216,6 +219,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       const doneToday = doneTodayOrders.length;
       const doneTodayTotal = doneTodayOrders.reduce((sum, o) => sum + parseFloat(o.totalPrice || o.totalPayment || 0), 0);
       document.getElementById("dueTodayCount").textContent = dueToday;
+      document.getElementById("dueTodayTotal").textContent = '$' + dueTodayTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
       document.getElementById("doneTodayCount").textContent = doneToday;
       document.getElementById("doneTodayTotal").textContent = '$' + doneTodayTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
