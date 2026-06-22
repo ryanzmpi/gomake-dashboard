@@ -94,6 +94,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     .stat-value { font-size: 43px; font-weight: 700; color: #1a202c; }
     .stat-card.due .stat-value { color: #d97706; }
     .stat-card.done .stat-value { color: #16a34a; }
+    .stat-sub { font-size: 22px; color: #6b7280; margin-top: 4px; font-weight: 600; }
     .job-item { margin-bottom: 6px; }
     .job-item:last-child { margin-bottom: 0; }
     .job-item strong { display: block; font-size: 22px; color: #1a202c; margin-bottom: 3px; }
@@ -122,6 +123,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <div class="stat-card done">
       <div class="stat-label">Closed / Shipped Today</div>
       <div class="stat-value" id="doneTodayCount">&mdash;</div>
+      <div class="stat-sub" id="doneTodayTotal">&mdash;</div>
     </div>
   </div>
   <div class="card">
@@ -207,12 +209,15 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
       const todayStr = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Los_Angeles'}).format(new Date());
       const dueToday = allOrders.filter(r => r.due_date === todayStr).length;
-      const doneToday = rawOrders.filter(o => {
+      const doneTodayOrders = rawOrders.filter(o => {
         const readyDate = String(o.readyDate || "").split("T")[0];
         return readyDate === todayStr;
-      }).length;
+      });
+      const doneToday = doneTodayOrders.length;
+      const doneTodayTotal = doneTodayOrders.reduce((sum, o) => sum + parseFloat(o.totalPrice || o.totalPayment || 0), 0);
       document.getElementById("dueTodayCount").textContent = dueToday;
       document.getElementById("doneTodayCount").textContent = doneToday;
+      document.getElementById("doneTodayTotal").textContent = '$' + doneTodayTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
       const now = new Date().toLocaleTimeString();
       document.getElementById("statusBar").innerHTML = '&#10003; ' + allOrders.length + ' orders &nbsp;&middot;&nbsp; Updated ' + now;
