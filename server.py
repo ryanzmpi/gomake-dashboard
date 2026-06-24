@@ -1,7 +1,6 @@
 """
 Marathon Printing Orders Dashboard Server
 Serves the dashboard and proxies GoMake API calls server-side.
-Also syncs open orders to ShipStation every 5 minutes automatically.
 
 Setup:
     pip install fastapi uvicorn httpx python-dotenv
@@ -27,7 +26,6 @@ from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 
-# ── GoMake credentials ────────────────────────────────────────────────────────
 GOMAKE_BASE   = "https://api.gomake.net/api"
 CLIENT_ID     = os.getenv("GOMAKE_CLIENT_ID", "")
 CLIENT_SECRET = os.getenv("GOMAKE_CLIENT_SECRET", "")
@@ -43,24 +41,14 @@ GOMAKE_HEADERS = {
 SS_API_KEY    = os.getenv("SHIPSTATION_API_KEY", "")
 SS_API_SECRET = os.getenv("SHIPSTATION_API_SECRET", "")
 SS_BASE       = "https://ssapi.shipstation.com"
-
-_ss_token  = base64.b64encode(f"{SS_API_KEY}:{SS_API_SECRET}".encode()).decode()
-SS_HEADERS = {
+_ss_token     = base64.b64encode(f"{SS_API_KEY}:{SS_API_SECRET}".encode()).decode()
+SS_HEADERS    = {
     "Authorization": f"Basic {_ss_token}",
     "Content-Type":  "application/json",
 }
 
-SYNC_INTERVAL = 5 * 60  # seconds
-
-# ── Sync state (in-memory) ────────────────────────────────────────────────────
-_sync_state = {
-    "running":   False,
-    "last_run":  None,
-    "synced":    0,
-    "skipped":   0,
-    "errors":    0,
-    "log":       [],
-}
+SYNC_INTERVAL = 5 * 60  # seconds between auto-syncs
+_sync_state   = {"running": False, "last_run": None, "last_ok": 0, "last_skip": 0, "last_err": 0}
 
 # ── Lookup tables ─────────────────────────────────────────────────────────────
 
@@ -89,6 +77,7 @@ STATE_MAP = {
     "wisconsin": "WI", "wyoming": "WY",
 }
 
+
 # ── Address helpers ───────────────────────────────────────────────────────────
 
 def _country_code(raw: str) -> str:
@@ -106,10 +95,12 @@ def _state_code(raw: str) -> str:
 
 
 def _is_valid_street(s: str) -> bool:
+    """Real street addresses contain at least one digit (house number)."""
     return bool(s) and any(c.isdigit() for c in s)
 
 
 def _normalize_addr(addr: dict, fallback_name: str) -> dict:
+    """Map GoMake address fields to ShipStation shipTo shape."""
     street1 = (addr.get("address1") or addr.get("street") or "").strip()
     street2 = (addr.get("address2") or addr.get("apartment") or addr.get("entry") or "").strip()
     return {
@@ -124,7 +115,37 @@ def _normalize_addr(addr: dict, fallback_name: str) -> dict:
     }
 
 
+def extract_shipping_address(customer: dict) -> Optional[dict]:
+    """Returns the best shipping address from a GoMake customer record (type=0 preferred)."""
+    customer_name = (customer.get("name") or customer.get("mainContactName") or "").strip()
+    addresses = [a for a in (customer.get("addresses") or []) if a and a.get("isActive") is not False]
+    shipping = [a for a in addresses if a.get("type") == 0]
+    billing  = [a for a in addresses if a.get("type") == 1]
+    other    = [a for a in addresses if a.get("type") not in (0, 1)]
+    for group in (shipping, other, billing):
+        for addr in group:
+            if _is_valid_street(addr.get("address1") or ""):
+                return _normalize_addr(addr, customer_name)
+            if _is_valid_street(addr.get("address2") or ""):
+                patched = dict(addr)
+                patched["address1"] = addr.get("address2")
+                patched["address2"] = addr.get("address3") or ""
+                return _normalize_addr(patched, customer_name)
+    for contact in customer.get("contacts") or []:
+        raw = contact.get("address")
+        if not raw:
+            continue
+        contact_name = f"{contact.get('firstName', '')} {contact.get('lastName', '')}".strip() or customer_name
+        if isinstance(raw, str) and _is_valid_street(raw):
+            return {"name": contact_name, "street1": raw.strip(), "street2": "",
+                    "city": "", "state": "", "postalCode": "", "country": "US", "phone": ""}
+        if isinstance(raw, dict) and _is_valid_street(raw.get("address1") or raw.get("street") or ""):
+            return _normalize_addr(raw, contact_name)
+    return None
+
+
 def extract_order_delivery_address(order_detail: dict, contact_name: str) -> Optional[dict]:
+    """Pull the ship-to address from documentDeliveryAddresses on the order detail."""
     for addr in order_detail.get("documentDeliveryAddresses") or []:
         if not addr:
             continue
@@ -140,40 +161,26 @@ def extract_order_delivery_address(order_detail: dict, contact_name: str) -> Opt
             "street2":    street2,
             "city":       (addr.get("city") or "").strip(),
             "state":      _state_code(addr.get("state") or addr.get("stateCode") or ""),
-            "postalCode": (addr.get("zipCode") or addr.get("zip") or "").strip(),
+            "postalCode": (addr.get("zipCode") or addr.get("zip") or addr.get("postalCode") or "").strip(),
             "country":    _country_code(addr.get("country") or "US"),
             "phone":      "",
         }
     return None
 
 
-def extract_customer_shipping_address(customer: dict) -> Optional[dict]:
-    customer_name = (customer.get("name") or customer.get("mainContactName") or "").strip()
-    addresses = [a for a in (customer.get("addresses") or []) if a and a.get("isActive") is not False]
-    billing_keywords = ("bill", "invoice", "fiscal", "payment")
-
-    for group in ([a for a in addresses if a.get("type") == 0],
-                  [a for a in addresses if a.get("type") not in (0, 1)],
-                  [a for a in addresses if a.get("type") == 1]):
-        for addr in group:
-            type_val = str(addr.get("addressType") or "").lower()
-            if any(k in type_val for k in billing_keywords):
-                continue
-            if _is_valid_street(addr.get("address1") or ""):
-                return _normalize_addr(addr, customer_name)
-            if _is_valid_street(addr.get("address2") or ""):
-                patched = dict(addr)
-                patched["address1"] = addr.get("address2")
-                patched["address2"] = addr.get("address3") or ""
-                return _normalize_addr(patched, customer_name)
-    return None
-
+# ── Date helper ───────────────────────────────────────────────────────────────
 
 def _to_iso(raw: str) -> Optional[str]:
+    """Convert GoMake date strings to ISO 8601 for ShipStation."""
     if not raw:
         return None
-    for fmt in ("%d-%m-%Y %H:%M", "%Y-%m-%dT%H:%M:%S.%f",
-                "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d"):
+    for fmt in (
+        "%d-%m-%Y %H:%M",
+        "%Y-%m-%dT%H:%M:%S.%f",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M",
+        "%Y-%m-%d",
+    ):
         try:
             return datetime.strptime(raw.strip(), fmt).strftime("%Y-%m-%dT%H:%M:%S")
         except ValueError:
@@ -212,12 +219,14 @@ def build_ss_order(order: dict, ship_to: dict, items: list, order_detail: dict =
             "unitPrice":   float(item.get("unitPrice") or item.get("price") or 0),
         }
         for item in items
-    ] or [{
-        "lineItemKey": order_number,
-        "name":        order.get("worksNames") or "Print Order",
-        "quantity":    1,
-        "unitPrice":   float(order.get("totalPrice") or 0),
-    }]
+    ] or [
+        {
+            "lineItemKey": order_number,
+            "name":        order.get("worksNames") or "Print Order",
+            "quantity":    1,
+            "unitPrice":   float(order.get("totalPrice") or 0),
+        }
+    ]
 
     address_block = {
         "name":       ship_to_final.get("name", ""),
@@ -244,117 +253,114 @@ def build_ss_order(order: dict, ship_to: dict, items: list, order_detail: dict =
     }
 
 
-async def _sync_all_orders(client: httpx.AsyncClient) -> dict:
-    """Fetch open GoMake orders and upsert them into ShipStation. Returns counts."""
-    orders = []
-    page = 1
-    while True:
-        resp = await client.post(
-            f"{GOMAKE_BASE}/sales-orders/list",
-            headers=GOMAKE_HEADERS,
-            json={"model": {"pageSize": PAGE_SIZE, "pageNumber": page}},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        page_data = resp.json().get("data", {}).get("data", [])
-        if not page_data:
-            break
-        open_orders = [
-            o for o in page_data
-            if "closed" not in str(o.get("statusTitleText", "")).lower()
-            and o.get("deliveryStatus") != 3
-            and not o.get("readyDate")
-        ]
-        orders.extend(open_orders)
-        if len(page_data) < PAGE_SIZE:
-            break
-        page += 1
+async def _sync_all_orders() -> dict:
+    """Fetch all open GoMake orders and upsert into ShipStation. Returns counts."""
+    counts = {"ok": 0, "skipped": 0, "error": 0}
+    async with httpx.AsyncClient() as client:
+        # Fetch open orders
+        orders = []
+        page = 1
+        while True:
+            resp = await client.post(
+                f"{GOMAKE_BASE}/sales-orders/list",
+                headers=GOMAKE_HEADERS,
+                json={"model": {"pageSize": PAGE_SIZE, "pageNumber": page}},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            page_data = resp.json().get("data", {}).get("data", [])
+            if not page_data:
+                break
+            open_orders = [
+                o for o in page_data
+                if "closed" not in str(o.get("statusTitleText", "")).lower()
+                and o.get("deliveryStatus") != 3
+                and not o.get("readyDate")
+            ]
+            orders.extend(open_orders)
+            if len(page_data) < PAGE_SIZE:
+                break
+            page += 1
 
-    counts = {"synced": 0, "skipped": 0, "errors": 0}
-    log = []
+        for order in orders:
+            order_number = str(order.get("number") or order.get("orderNumber") or order.get("id") or "?")
+            order_id     = order.get("id") or ""
+            contact_name = order.get("contactName") or order.get("customerName") or ""
 
-    for order in orders:
-        order_number = str(order.get("number") or order.get("orderNumber") or order.get("id") or "?")
-        order_id     = order.get("id") or ""
-        customer_id  = order.get("customerId") or ""
+            order_detail: dict = {}
+            items: list = []
+            if order_id:
+                try:
+                    r = await client.get(
+                        f"{GOMAKE_BASE}/sales-orders/{order_id}",
+                        headers=GOMAKE_HEADERS, timeout=30,
+                    )
+                    r.raise_for_status()
+                    order_detail = r.json().get("data", {})
+                    items = order_detail.get("documentItems", [])
+                except Exception:
+                    pass
 
-        # Fetch order detail (delivery address + line items)
-        order_detail = {}
-        items = []
-        if order_id:
+            ship_to = extract_order_delivery_address(order_detail, contact_name)
+            if not ship_to:
+                customer_id = order.get("customerId") or ""
+                if customer_id:
+                    try:
+                        r = await client.get(
+                            f"{GOMAKE_BASE}/customers/{customer_id}",
+                            headers=GOMAKE_HEADERS, timeout=30,
+                        )
+                        r.raise_for_status()
+                        customer = r.json().get("data", {})
+                        ship_to  = extract_shipping_address(customer)
+                    except Exception:
+                        pass
+
+            if not ship_to:
+                counts["skipped"] += 1
+                continue
+
+            payload = build_ss_order(order, ship_to, items, order_detail=order_detail)
             try:
-                r = await client.get(f"{GOMAKE_BASE}/sales-orders/{order_id}",
-                                     headers=GOMAKE_HEADERS, timeout=30)
+                r = await client.post(
+                    f"{SS_BASE}/orders/createorder",
+                    headers=SS_HEADERS, json=payload, timeout=30,
+                )
                 r.raise_for_status()
-                order_detail = r.json().get("data", {})
-                items = order_detail.get("documentItems", [])
-            except Exception as e:
-                log.append(f"{order_number}: order detail failed ({e})")
+                counts["ok"] += 1
+            except Exception:
+                counts["error"] += 1
 
-        # Resolve shipping address — order delivery address first
-        contact_name = order.get("contactName") or order.get("customerName") or ""
-        ship_to = extract_order_delivery_address(order_detail, contact_name)
-
-        # Fall back to customer record
-        if not ship_to and customer_id:
-            try:
-                r = await client.get(f"{GOMAKE_BASE}/customers/{customer_id}",
-                                     headers=GOMAKE_HEADERS, timeout=30)
-                r.raise_for_status()
-                customer = r.json().get("data", {})
-                ship_to  = extract_customer_shipping_address(customer)
-            except Exception as e:
-                log.append(f"{order_number}: customer fetch failed ({e})")
-
-        if not ship_to:
-            counts["skipped"] += 1
-            log.append(f"{order_number}: skipped (no shipping address)")
-            continue
-
-        payload = build_ss_order(order, ship_to, items, order_detail=order_detail)
-        try:
-            r = await client.post(f"{SS_BASE}/orders/createorder",
-                                  headers=SS_HEADERS, json=payload, timeout=30)
-            r.raise_for_status()
-            ss_id = r.json().get("orderId") or "?"
-            counts["synced"] += 1
-            log.append(f"{order_number}: ✓ SS {ss_id} → {ship_to['street1']}, {ship_to['city']}, {ship_to['state']}")
-        except httpx.HTTPStatusError as e:
-            counts["errors"] += 1
-            log.append(f"{order_number}: ✗ ShipStation {e.response.status_code}")
-
-    return {**counts, "log": log}
+    return counts
 
 
 async def run_sync():
-    """Run the full sync and update _sync_state."""
+    """Trigger a sync run, updating _sync_state."""
     if _sync_state["running"]:
-        return
+        return {"status": "already_running"}
     _sync_state["running"] = True
     try:
-        async with httpx.AsyncClient() as client:
-            result = await _sync_all_orders(client)
+        counts = await _sync_all_orders()
         _sync_state.update({
-            "synced":   result["synced"],
-            "skipped":  result["skipped"],
-            "errors":   result["errors"],
-            "log":      result["log"][-50:],  # keep last 50 lines
-            "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "last_run":  datetime.utcnow().isoformat(),
+            "last_ok":   counts["ok"],
+            "last_skip": counts["skipped"],
+            "last_err":  counts["error"],
         })
-        print(f"[ShipStation sync] {result['synced']} synced, "
-              f"{result['skipped']} skipped, {result['errors']} errors — {_sync_state['last_run']}")
-    except Exception as e:
-        print(f"[ShipStation sync] error: {e}")
+        return counts
     finally:
         _sync_state["running"] = False
 
 
 async def _sync_loop():
     """Background task: sync every SYNC_INTERVAL seconds."""
+    await asyncio.sleep(10)  # brief delay on startup
     while True:
+        try:
+            await run_sync()
+        except Exception as e:
+            print(f"[sync] error: {e}")
         await asyncio.sleep(SYNC_INTERVAL)
-        await run_sync()
-
 
 DASHBOARD_HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -425,6 +431,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     .stat-value { font-size: 43px; font-weight: 700; color: #1a202c; }
     .stat-card.due .stat-value { color: #d97706; }
     .stat-card.done .stat-value { color: #16a34a; }
+    .stat-sub { font-size: 22px; color: #6b7280; margin-top: 4px; font-weight: 600; }
     .job-item { margin-bottom: 6px; }
     .job-item:last-child { margin-bottom: 0; }
     .job-item strong { display: block; font-size: 22px; color: #1a202c; margin-bottom: 3px; }
@@ -449,10 +456,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <div class="stat-card due">
       <div class="stat-label">Due Today</div>
       <div class="stat-value" id="dueTodayCount">&mdash;</div>
+      <div class="stat-sub" id="dueTodayTotal">&mdash;</div>
     </div>
     <div class="stat-card done">
       <div class="stat-label">Closed / Shipped Today</div>
       <div class="stat-value" id="doneTodayCount">&mdash;</div>
+      <div class="stat-sub" id="doneTodayTotal">&mdash;</div>
     </div>
   </div>
   <div class="card">
@@ -475,7 +484,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <button class="btn-primary" id="refreshBtn" onclick="loadOrders()" style="margin-top:18px">&#8635; Refresh</button>
         <button class="btn-secondary" onclick="downloadCSV()" style="margin-top:18px">&#8595; CSV</button>
         <button class="btn-green" id="syncBtn" onclick="syncShipStation()" style="margin-top:18px">&#8644; Sync SS</button>
-        <span id="syncStatus" style="font-size:20px;color:#6b7280;margin-top:22px;display:inline-block"></span>
+        <span id="syncStatus" style="font-size:20px;color:#6b7280;margin-top:18px"></span>
       </div>
     </div>
     <div id="tableContainer">
@@ -539,13 +548,19 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
 
       const todayStr = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Los_Angeles'}).format(new Date());
-      const dueToday = allOrders.filter(r => r.due_date === todayStr).length;
-      const doneToday = rawOrders.filter(o => {
+      const dueTodayOrders = rawOrders.filter(o => String(o.dueDate || o.due_date || "").substring(0, 10) === todayStr && !o.readyDate);
+      const dueToday = dueTodayOrders.length;
+      const dueTodayTotal = dueTodayOrders.reduce((sum, o) => sum + parseFloat(o.totalPrice || o.totalPayment || 0), 0);
+      const doneTodayOrders = rawOrders.filter(o => {
         const readyDate = String(o.readyDate || "").split("T")[0];
         return readyDate === todayStr;
-      }).length;
+      });
+      const doneToday = doneTodayOrders.length;
+      const doneTodayTotal = doneTodayOrders.reduce((sum, o) => sum + parseFloat(o.totalPrice || o.totalPayment || 0), 0);
       document.getElementById("dueTodayCount").textContent = dueToday;
+      document.getElementById("dueTodayTotal").textContent = '$' + dueTodayTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
       document.getElementById("doneTodayCount").textContent = doneToday;
+      document.getElementById("doneTodayTotal").textContent = '$' + doneTodayTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
       const now = new Date().toLocaleTimeString();
       document.getElementById("statusBar").innerHTML = '&#10003; ' + allOrders.length + ' orders &nbsp;&middot;&nbsp; Updated ' + now;
@@ -576,45 +591,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }));
   }
 
-  async function loadSyncStatus() {
-    try {
-      const res = await fetch('/api/sync/status');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.last_run) {
-          document.getElementById('syncStatus').textContent =
-            'Last sync: ' + data.last_run + ' (' + data.synced + ' synced)';
-        }
-      }
-    } catch(e) {}
-  }
-
-  async function syncShipStation() {
-    const btn = document.getElementById('syncBtn');
-    const status = document.getElementById('syncStatus');
-    btn.disabled = true;
-    btn.textContent = 'Syncing…';
-    status.textContent = '';
-    status.style.color = '#6b7280';
-    try {
-      const res = await fetch('/api/sync', {method: 'POST'});
-      const data = await res.json();
-      if (res.ok) {
-        status.textContent = '✓ ' + data.synced + ' synced, ' + data.skipped + ' skipped';
-        status.style.color = '#16a34a';
-      } else {
-        status.textContent = '✗ ' + (data.detail || 'Sync failed');
-        status.style.color = '#dc2626';
-      }
-    } catch(e) {
-      status.textContent = '✗ Error';
-      status.style.color = '#dc2626';
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '⇄ Sync SS';
-    }
-  }
-
   function debouncedRender() {
     if (renderPending) return;
     renderPending = true;
@@ -640,6 +616,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
     if (s.includes('progress')||s.includes('active')||s.includes('run')) return {bg:'#dbeafe', fg:'#1d4ed8'};
@@ -763,6 +740,43 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
 
+  async function loadSyncStatus() {
+    try {
+      const res = await fetch('/api/sync/status');
+      if (!res.ok) return;
+      const s = await res.json();
+      const el = document.getElementById("syncStatus");
+      if (s.running) {
+        el.textContent = "⟳ Syncing…";
+      } else if (s.last_run) {
+        const t = new Date(s.last_run + "Z").toLocaleTimeString();
+        el.textContent = `Last sync ${t} · ✓${s.last_ok} ⊘${s.last_skip} ✗${s.last_err}`;
+      } else {
+        el.textContent = "Not synced yet";
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  async function syncShipStation() {
+    const btn = document.getElementById("syncBtn");
+    const el  = document.getElementById("syncStatus");
+    btn.disabled = true;
+    el.textContent = "⟳ Syncing…";
+    try {
+      const res = await fetch('/api/sync', { method: 'POST' });
+      const data = await res.json();
+      if (data.status === "already_running") {
+        el.textContent = "Already running…";
+      } else {
+        el.textContent = `Done · ✓${data.ok} ⊘${data.skipped} ✗${data.error}`;
+      }
+    } catch (e) {
+      el.textContent = "Sync error";
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   loadOrders();
 </script>
 </body>
@@ -775,14 +789,12 @@ async def lifespan(app: FastAPI):
         print("\n⚠️  Warning: GOMAKE_CLIENT_ID or GOMAKE_CLIENT_SECRET not set.")
         print("   Make sure your .env file has both values.\n")
     else:
-        print(f"\n✓ GoMake credentials loaded (client ID: {CLIENT_ID[:6]}…)")
-
+        print(f"\n✓ GoMake credentials loaded (client ID: {CLIENT_ID[:6]}…)\n")
     if SS_API_KEY and SS_API_SECRET:
-        print(f"✓ ShipStation credentials loaded — auto-sync every {SYNC_INTERVAL//60} min\n")
+        print(f"✓ ShipStation credentials loaded — sync every {SYNC_INTERVAL//60} min\n")
         asyncio.create_task(_sync_loop())
     else:
-        print("⚠️  SHIPSTATION_API_KEY / SHIPSTATION_API_SECRET not set — sync disabled.\n")
-
+        print("⚠️  SHIPSTATION_API_KEY / SHIPSTATION_API_SECRET not set — sync disabled\n")
     yield
 
 
@@ -944,6 +956,7 @@ PRESS_HTML = """<!DOCTYPE html>
           const res = await fetch('/api/orders/' + order.id + '/jobs');
           if (res.ok) {
             const jobs = await res.json();
+            // Collect only jobs that are currently printing
             for (const job of jobs) {
               if (isPrinting(job.jobStatuses)) {
                 const rawDate = order.dueDate || order.due_date || order.deliveryDate || '';
@@ -1058,6 +1071,7 @@ PRESS_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
     if (s.includes('progress')||s.includes('active')||s.includes('run')) return {bg:'#dbeafe', fg:'#1d4ed8'};
@@ -1152,6 +1166,7 @@ async def get_order_jobs(order_id: str):
     }
 
     async with httpx.AsyncClient(timeout=30) as client:
+        # Step 1: get order detail to find documentItems
         try:
             resp = await client.get(f"{GOMAKE_BASE}/sales-orders/{order_id}", headers=headers)
             resp.raise_for_status()
@@ -1164,6 +1179,7 @@ async def get_order_jobs(order_id: str):
 
         document_items = order_data.get("data", {}).get("documentItems", [])
 
+        # Step 2: fetch job statuses in parallel
         async def fetch_job_status(item):
             item_id = item.get("id")
             product_name = item.get("productName", "")
@@ -1260,31 +1276,17 @@ async def debug_dates():
 
 @app.post("/api/sync")
 async def trigger_sync():
-    """Manually trigger a ShipStation sync."""
+    """Manually trigger a GoMake → ShipStation sync."""
     if not SS_API_KEY or not SS_API_SECRET:
-        raise HTTPException(status_code=503, detail="ShipStation credentials not configured.")
-    if _sync_state["running"]:
-        raise HTTPException(status_code=409, detail="Sync already in progress.")
-    await run_sync()
-    return {
-        "synced":   _sync_state["synced"],
-        "skipped":  _sync_state["skipped"],
-        "errors":   _sync_state["errors"],
-        "last_run": _sync_state["last_run"],
-    }
+        raise HTTPException(status_code=500, detail="ShipStation credentials not configured.")
+    result = await run_sync()
+    return JSONResponse(content=result)
 
 
 @app.get("/api/sync/status")
 async def sync_status():
-    """Returns the result of the last ShipStation sync."""
-    return {
-        "running":  _sync_state["running"],
-        "last_run": _sync_state["last_run"],
-        "synced":   _sync_state["synced"],
-        "skipped":  _sync_state["skipped"],
-        "errors":   _sync_state["errors"],
-        "log":      _sync_state["log"],
-    }
+    """Return the current sync state."""
+    return JSONResponse(content=_sync_state)
 
 
 if __name__ == "__main__":
