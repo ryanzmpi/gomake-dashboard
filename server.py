@@ -946,6 +946,13 @@ PRESS_HTML = """<!DOCTYPE html>
     );
   }
 
+  const EXCLUDED_MACHINES = ['hp latex', 'mimaki'];
+  function isExcludedMachine(jobStatuses) {
+    return (jobStatuses || []).some(s =>
+      EXCLUDED_MACHINES.some(m => String(s.machineName || '').toLowerCase().includes(m))
+    );
+  }
+
   async function loadOrders(silent = false) {
     if (!silent) setLoading(true);
     else document.getElementById("statusBar").innerHTML = '&#8635; Refreshing&hellip;';
@@ -978,7 +985,7 @@ PRESS_HTML = """<!DOCTYPE html>
             const jobs = await res.json();
             // Collect only jobs that are currently printing
             for (const job of jobs) {
-              if (isPrinting(job.jobStatuses)) {
+              if (isPrinting(job.jobStatuses) && !isExcludedMachine(job.jobStatuses)) {
                 const rawDate = order.dueDate || order.due_date || order.deliveryDate || '';
                 const dueDate = String(rawDate).substring(0, 10);
                 newJobs.push({
