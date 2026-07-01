@@ -1219,7 +1219,7 @@ async def get_order_jobs(order_id: str):
                 return {"productName": product_name, "quantity": quantity, "jobStatuses": []}
 
         results = await asyncio.gather(*[fetch_job_status(item) for item in document_items])
-        return list(results)
+        return [r for r in results if (r.get("productName") or "").strip().lower() != "delivery"]
 
 
 @app.get("/api/debug/order/{order_number}")
