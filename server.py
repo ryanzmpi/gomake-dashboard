@@ -529,6 +529,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   async function loadOrders(silent = false) {
     if (!silent) setLoading(true);
     else document.getElementById("statusBar").innerHTML = '&#8635; Refreshing&hellip;';
+    // Preserve existing job statuses so the column stays visible during silent refresh
+    const savedStatuses = {};
+    if (silent) {
+      for (const o of allOrders) {
+        if (o.id && o.jobStatuses !== null) savedStatuses[o.id] = o.jobStatuses;
+      }
+    }
     const newOrders = [];
     const rawOrders = [];
     try {
@@ -563,6 +570,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       document.getElementById("doneTodayCount").textContent = doneToday;
       document.getElementById("doneTodayTotal").textContent = '$' + doneTodayTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
+      // Carry over saved job statuses so column stays populated during background refresh
+      if (silent) {
+        for (const o of newOrders) {
+          if (o.id && savedStatuses[o.id] !== undefined) o.jobStatuses = savedStatuses[o.id];
+        }
+      }
       allOrders = newOrders;
       const now = new Date().toLocaleTimeString();
       document.getElementById("statusBar").innerHTML = '&#10003; ' + allOrders.length + ' orders &nbsp;&middot;&nbsp; Updated ' + now;
@@ -934,6 +947,7 @@ PRESS_HTML = """<!DOCTYPE html>
   async function loadOrders(silent = false) {
     if (!silent) setLoading(true);
     else document.getElementById("statusBar").innerHTML = '&#8635; Refreshing&hellip;';
+    const savedJobs = silent ? pressJobs.slice() : [];
     const newJobs = [];
     const openOrders = [];
     try {
