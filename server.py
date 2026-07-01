@@ -1196,8 +1196,8 @@ PREPRESS_HTML = """<!DOCTYPE html>
 </header>
 <nav>
   <a href="/">All Orders</a>
-  <a href="/press">Press</a>
   <a href="/prepress" class="active">Prepress / Graphics</a>
+  <a href="/press">Press</a>
 </nav>
 <main>
   <div class="card">
