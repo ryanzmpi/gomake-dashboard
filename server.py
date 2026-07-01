@@ -449,8 +449,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 </header>
 <nav>
   <a href="/" class="active">All Orders</a>
-  <a href="/press">Press</a>
   <a href="/prepress">Prepress / Graphics</a>
+  <a href="/press">Press</a>
 </nav>
 <main>
   <div class="summary">
@@ -891,8 +891,8 @@ PRESS_HTML = """<!DOCTYPE html>
 </header>
 <nav>
   <a href="/">All Orders</a>
-  <a href="/press" class="active">Press</a>
   <a href="/prepress">Prepress / Graphics</a>
+  <a href="/press" class="active">Press</a>
 </nav>
 <main>
   <div class="card">
