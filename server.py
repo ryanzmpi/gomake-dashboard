@@ -613,6 +613,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   function statusColor(status, station) {
     const s = String(status || '').toLowerCase();
     const st = String(station || '').toLowerCase();
+    if (s.includes('prepress') || st.includes('prepress') || s.includes('graphics') || st.includes('graphics')) return {bg:'#FFFF00', fg:'#1a202c'};
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
@@ -1068,6 +1069,7 @@ PRESS_HTML = """<!DOCTYPE html>
   function statusColor(status, station) {
     const s = String(status || '').toLowerCase();
     const st = String(station || '').toLowerCase();
+    if (s.includes('prepress') || st.includes('prepress') || s.includes('graphics') || st.includes('graphics')) return {bg:'#FFFF00', fg:'#1a202c'};
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
