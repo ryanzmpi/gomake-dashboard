@@ -1142,15 +1142,15 @@ PREPRESS_HTML = """<!DOCTYPE html>
   <title>Prepress / Graphics Jobs</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #1a202c; font-size: 22px; }
-    header { background: #22475A; color: #fff; padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; }
-    .header-left { display: flex; align-items: center; gap: 18px; }
-    .logo { height: 48px; width: auto; display: block; }
-    header h1 { font-size: 30px; font-weight: 700; letter-spacing: 0.01em; }
-    .status-bar { font-size: 18px; opacity: 0.85; }
-    nav { background: #1a3648; display: flex; gap: 4px; padding: 0 20px; }
-    nav a { color: #cbd5e0; text-decoration: none; padding: 10px 20px; font-size: 20px; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
-    nav a:hover { color: #fff; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a202c; min-height: 100vh; }
+    header { background: #22475A; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+    header .header-left { display: flex; align-items: center; gap: 20px; }
+    header img.logo { height: 70px; width: auto; }
+    header h1 { font-size: 36px; font-weight: 600; }
+    .status-bar { font-size: 22px; opacity: 0.85; text-align: right; }
+    nav { background: #1a3648; display: flex; gap: 4px; padding: 0 24px; }
+    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 23px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
+    nav a:hover { color: white; }
     nav a.active { color: #fff; border-bottom-color: #fff; font-weight: 600; }
     main { padding: 24px 28px; }
     .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 20px 24px; }
