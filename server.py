@@ -526,9 +526,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     return { id: orderId, order_number: String(orderNumber), due_date: dueDate, works_names: worksNames, notes: notes, jobStatuses: null };
   }
 
-  async function loadOrders() {
-    setLoading(true);
-    allOrders = [];
+  async function loadOrders(silent = false) {
+    if (!silent) setLoading(true);
+    else document.getElementById("statusBar").innerHTML = '&#8635; Refreshing&hellip;';
+    const newOrders = [];
     const rawOrders = [];
     try {
       let page = 0;
@@ -542,7 +543,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           o.deliveryStatus !== 3 &&
           !o.readyDate
         );
-        allOrders.push(...open.map(extractFields));
+        newOrders.push(...open.map(extractFields));
         if (orders.length < 100) break;
         page++;
       }
@@ -562,6 +563,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       document.getElementById("doneTodayCount").textContent = doneToday;
       document.getElementById("doneTodayTotal").textContent = '$' + doneTodayTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
+      allOrders = newOrders;
       const now = new Date().toLocaleTimeString();
       document.getElementById("statusBar").innerHTML = '&#10003; ' + allOrders.length + ' orders &nbsp;&middot;&nbsp; Updated ' + now;
 
@@ -570,10 +572,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       loadJobStatuses();
       loadSyncStatus();
     } catch (err) {
-      showError("Error: " + err.message);
-      document.getElementById("statusBar").textContent = "Error";
+      if (!silent) showError("Error: " + err.message);
+      document.getElementById("statusBar").textContent = silent ? "Refresh failed" : "Error";
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -721,7 +723,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     clearTimeout(refreshTimer);
     const interval = parseInt(document.getElementById("refreshInterval").value);
     if (!interval) return;
-    refreshTimer = setTimeout(loadOrders, interval * 1000);
+    refreshTimer = setTimeout(() => loadOrders(true), interval * 1000);
   }
 
   function setLoading(on) {
@@ -929,9 +931,10 @@ PRESS_HTML = """<!DOCTYPE html>
     );
   }
 
-  async function loadOrders() {
-    setLoading(true);
-    pressJobs = [];
+  async function loadOrders(silent = false) {
+    if (!silent) setLoading(true);
+    else document.getElementById("statusBar").innerHTML = '&#8635; Refreshing&hellip;';
+    const newJobs = [];
     const openOrders = [];
     try {
       let page = 0;
@@ -962,7 +965,7 @@ PRESS_HTML = """<!DOCTYPE html>
               if (isPrinting(job.jobStatuses)) {
                 const rawDate = order.dueDate || order.due_date || order.deliveryDate || '';
                 const dueDate = String(rawDate).substring(0, 10);
-                pressJobs.push({
+                newJobs.push({
                   order_number: String(order.number || order.orderNumber || order.id || ''),
                   due_date: dueDate,
                   product_name: job.productName || '',
@@ -977,15 +980,16 @@ PRESS_HTML = """<!DOCTYPE html>
         document.getElementById("statusBar").textContent = 'Loading job statuses (' + loaded + '/' + openOrders.length + ')...';
       }));
 
+      pressJobs = newJobs;
       const now = new Date().toLocaleTimeString();
       document.getElementById("statusBar").innerHTML = '&#10003; Updated ' + now;
       renderTable();
       scheduleRefresh();
     } catch (err) {
-      document.getElementById("tableContainer").innerHTML = '<div class="state error-msg"><div class="icon">&#9888;</div>' + esc(err.message) + '</div>';
-      document.getElementById("statusBar").textContent = "Error";
+      if (!silent) document.getElementById("tableContainer").innerHTML = '<div class="state error-msg"><div class="icon">&#9888;</div>' + esc(err.message) + '</div>';
+      document.getElementById("statusBar").textContent = silent ? "Refresh failed" : "Error";
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -1093,7 +1097,7 @@ PRESS_HTML = """<!DOCTYPE html>
     clearTimeout(refreshTimer);
     const interval = parseInt(document.getElementById("refreshInterval").value);
     if (!interval) return;
-    refreshTimer = setTimeout(loadOrders, interval * 1000);
+    refreshTimer = setTimeout(() => loadOrders(true), interval * 1000);
   }
 
   function setLoading(on) {
