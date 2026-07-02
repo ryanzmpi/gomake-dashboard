@@ -604,7 +604,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       const dueTodayTotal = dueTodayOrders.reduce((sum, o) => sum + parseFloat(o.totalPrice || o.totalPayment || 0), 0);
       const doneTodayOrders = rawOrders.filter(o => {
         const readyDate = String(o.readyDate || "").split("T")[0];
-        return readyDate === todayStr;
+        if (readyDate !== todayStr) return false;
+        // If we fetched job statuses for this order, verify ALL jobs are truly done
+        if (prefetchedStatuses[o.id] !== undefined) return allJobsDone(prefetchedStatuses[o.id]);
+        return true; // formally closed orders without job status checks pass through
       });
       const doneToday = doneTodayOrders.length;
       const doneTodayTotal = doneTodayOrders.reduce((sum, o) => sum + parseFloat(o.totalPrice || o.totalPayment || 0), 0);
