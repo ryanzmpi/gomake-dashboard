@@ -543,6 +543,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     const newOrders = [];
     const rawOrders = [];
     try {
+      const openCandidates = [];
       let page = 0;
       while (true) {
         const data = await fetchPage(page);
@@ -552,12 +553,49 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         const open = orders.filter(o =>
           !String(o.statusTitleText || "").toLowerCase().includes("closed") &&
           o.deliveryStatus !== 3 &&
-          !o.readyDate &&
           (o.dueDate || o.due_date || o.deliveryDate)
         );
-        newOrders.push(...open.map(extractFields));
+        openCandidates.push(...open);
         if (orders.length < 100) break;
         page++;
+      }
+
+      // Orders with readyDate might be fully done — fetch their job statuses to check
+      const definitelyOpen = openCandidates.filter(o => !o.readyDate);
+      const mightBeDone   = openCandidates.filter(o =>  o.readyDate);
+
+      const prefetchedStatuses = {};
+      if (mightBeDone.length) {
+        document.getElementById("statusBar").textContent = 'Verifying ' + mightBeDone.length + ' completed order(s)...';
+        await Promise.all(mightBeDone.map(async (order) => {
+          if (!order.id) return;
+          try {
+            const res = await fetch('/api/orders/' + order.id + '/jobs');
+            if (res.ok) prefetchedStatuses[order.id] = await res.json();
+          } catch (e) {}
+        }));
+      }
+
+      function allJobsDone(jobs) {
+        if (!jobs || !jobs.length) return false;
+        return jobs.every(job => {
+          const statuses = job.jobStatuses || [];
+          if (!statuses.length) return false;
+          return statuses.every(s => /done|complet|finish/i.test(String(s.status || '')));
+        });
+      }
+
+      // Keep only mightBeDone orders where at least one job is still active
+      const stillActive = mightBeDone.filter(o => !allJobsDone(prefetchedStatuses[o.id]));
+      const finalOpen = [...definitelyOpen, ...stillActive];
+      newOrders.push(...finalOpen.map(extractFields));
+
+      // Pre-populate job statuses for orders we already fetched above
+      for (const o of finalOpen) {
+        if (prefetchedStatuses[o.id]) {
+          const idx = newOrders.findIndex(no => no.id === o.id);
+          if (idx >= 0) newOrders[idx].jobStatuses = prefetchedStatuses[o.id];
+        }
       }
 
       const todayStr = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Los_Angeles'}).format(new Date());
@@ -576,9 +614,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       document.getElementById("doneTodayTotal").textContent = '$' + doneTodayTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
       // Carry over saved job statuses so column stays populated during background refresh
+      // (only where we don't already have freshly-fetched data)
       if (silent) {
         for (const o of newOrders) {
-          if (o.id && savedStatuses[o.id] !== undefined) o.jobStatuses = savedStatuses[o.id];
+          if (o.id && o.jobStatuses === null && savedStatuses[o.id] !== undefined) {
+            o.jobStatuses = savedStatuses[o.id];
+          }
         }
       }
       allOrders = newOrders;
