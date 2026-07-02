@@ -552,7 +552,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         const open = orders.filter(o =>
           !String(o.statusTitleText || "").toLowerCase().includes("closed") &&
           o.deliveryStatus !== 3 &&
-          !o.readyDate
+          !o.readyDate &&
+          (o.dueDate || o.due_date || o.deliveryDate)
         );
         newOrders.push(...open.map(extractFields));
         if (orders.length < 100) break;
