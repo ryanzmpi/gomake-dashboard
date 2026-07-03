@@ -666,7 +666,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     if (!jobStatuses.length) return '<span style="color:#9ca3af">&#8212;</span>';
     return jobStatuses.map(function(job) {
       const badges = (job.jobStatuses || []).map(function(s) {
-        const c = statusColor(s.status, s.currentStation);
+        const c = statusColor(s.status, s.currentStation, s.machineName);
         const label = esc(s.status) + (s.currentStation ? ' @ ' + esc(s.currentStation) : '');
         return '<span class="job-status-badge" style="background:' + c.bg + ';color:' + c.fg + '">' + label + '</span>';
       }).join('');
@@ -674,16 +674,17 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }).join('');
   }
 
-  function statusColor(status, station) {
+  function statusColor(status, station, machine) {
     const s = String(status || '').toLowerCase();
     const st = String(station || '').toLowerCase();
+    const m = String(machine || '').toLowerCase();
     if (s.includes('prepress') || st.includes('prepress') || s.includes('graphics') || st.includes('graphics')) return {bg:'#FFFF00', fg:'#1a202c'};
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
-    if (s.includes('roll sheeter') || st.includes('hand cutting'))   return {bg:'#1BFC06', fg:'#1a202c'};
+    if (st.includes('roll sheeter') || m.includes('hand cutting'))   return {bg:'#1BFC06', fg:'#1a202c'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
     if (s.includes('progress')||s.includes('active')||s.includes('run')) return {bg:'#dbeafe', fg:'#1d4ed8'};
     if (s.includes('done')||s.includes('complet')||s.includes('finish')) return {bg:'#dcfce7', fg:'#16a34a'};
@@ -1113,7 +1114,7 @@ PRESS_HTML = """<!DOCTYPE html>
         }
       }
       const badges = r.jobStatuses.map(function(s) {
-        const c = statusColor(s.status, s.currentStation);
+        const c = statusColor(s.status, s.currentStation, s.machineName);
         const lbl = esc(s.status) + (s.currentStation ? ' @ ' + esc(s.currentStation) : '');
         return '<span class="job-status-badge" style="background:' + c.bg + ';color:' + c.fg + '">' + lbl + '</span>';
       }).join(' ');
@@ -1145,16 +1146,17 @@ PRESS_HTML = """<!DOCTYPE html>
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
 
-  function statusColor(status, station) {
+  function statusColor(status, station, machine) {
     const s = String(status || '').toLowerCase();
     const st = String(station || '').toLowerCase();
+    const m = String(machine || '').toLowerCase();
     if (s.includes('prepress') || st.includes('prepress') || s.includes('graphics') || st.includes('graphics')) return {bg:'#FFFF00', fg:'#1a202c'};
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
-    if (s.includes('roll sheeter') || st.includes('hand cutting'))   return {bg:'#1BFC06', fg:'#1a202c'};
+    if (st.includes('roll sheeter') || m.includes('hand cutting'))   return {bg:'#1BFC06', fg:'#1a202c'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
     if (s.includes('progress')||s.includes('active')||s.includes('run')) return {bg:'#dbeafe', fg:'#1d4ed8'};
     if (s.includes('done')||s.includes('complet')||s.includes('finish')) return {bg:'#dcfce7', fg:'#16a34a'};
@@ -1422,7 +1424,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
         }
       }
       const badges = r.jobStatuses.map(function(s) {
-        const c = statusColor(s.status, s.currentStation);
+        const c = statusColor(s.status, s.currentStation, s.machineName);
         const lbl = esc(s.status) + (s.currentStation ? ' @ ' + esc(s.currentStation) : '');
         return '<span class="job-status-badge" style="background:' + c.bg + ';color:' + c.fg + '">' + lbl + '</span>';
       }).join(' ');
@@ -1454,16 +1456,17 @@ PREPRESS_HTML = """<!DOCTYPE html>
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
 
-  function statusColor(status, station) {
+  function statusColor(status, station, machine) {
     const s = String(status || '').toLowerCase();
     const st = String(station || '').toLowerCase();
+    const m = String(machine || '').toLowerCase();
     if (s.includes('prepress') || st.includes('prepress') || s.includes('graphics') || st.includes('graphics')) return {bg:'#FFFF00', fg:'#1a202c'};
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
-    if (s.includes('roll sheeter') || st.includes('hand cutting'))   return {bg:'#1BFC06', fg:'#1a202c'};
+    if (st.includes('roll sheeter') || m.includes('hand cutting'))   return {bg:'#1BFC06', fg:'#1a202c'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
     if (s.includes('progress')||s.includes('active')||s.includes('run')) return {bg:'#dbeafe', fg:'#1d4ed8'};
     if (s.includes('done')||s.includes('complet')||s.includes('finish')) return {bg:'#dcfce7', fg:'#16a34a'};
@@ -1621,8 +1624,8 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
   function isWideFormat(jobStatuses) {
     return (jobStatuses || []).some(s =>
       WIDE_FORMAT_MACHINES.some(m => String(s.machineName || '').toLowerCase().includes(m)) ||
-      String(s.status || '').toLowerCase().includes('roll sheeter') ||
-      String(s.currentStation || '').toLowerCase().includes('hand cutting')
+      String(s.currentStation || '').toLowerCase().includes('roll sheeter') ||
+      String(s.machineName || '').toLowerCase().includes('hand cutting')
     );
   }
 
@@ -1732,7 +1735,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
         }
       }
       const badges = r.jobStatuses.map(function(s) {
-        const c = statusColor(s.status, s.currentStation);
+        const c = statusColor(s.status, s.currentStation, s.machineName);
         const lbl = esc(s.status) + (s.currentStation ? ' @ ' + esc(s.currentStation) : '');
         return '<span class="job-status-badge" style="background:' + c.bg + ';color:' + c.fg + '">' + lbl + '</span>';
       }).join(' ');
@@ -1764,16 +1767,17 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
 
-  function statusColor(status, station) {
+  function statusColor(status, station, machine) {
     const s = String(status || '').toLowerCase();
     const st = String(station || '').toLowerCase();
+    const m = String(machine || '').toLowerCase();
     if (s.includes('prepress') || st.includes('prepress') || s.includes('graphics') || st.includes('graphics')) return {bg:'#FFFF00', fg:'#1a202c'};
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
-    if (s.includes('roll sheeter') || st.includes('hand cutting'))   return {bg:'#1BFC06', fg:'#1a202c'};
+    if (st.includes('roll sheeter') || m.includes('hand cutting'))   return {bg:'#1BFC06', fg:'#1a202c'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
     if (s.includes('progress')||s.includes('active')||s.includes('run')) return {bg:'#dbeafe', fg:'#1d4ed8'};
     if (s.includes('done')||s.includes('complet')||s.includes('finish')) return {bg:'#dcfce7', fg:'#16a34a'};
@@ -2059,7 +2063,7 @@ FINISHING_HTML = """<!DOCTYPE html>
         }
       }
       const badges = r.jobStatuses.map(function(s) {
-        const c = statusColor(s.status, s.currentStation);
+        const c = statusColor(s.status, s.currentStation, s.machineName);
         const lbl = esc(s.status) + (s.currentStation ? ' @ ' + esc(s.currentStation) : '');
         return '<span class="job-status-badge" style="background:' + c.bg + ';color:' + c.fg + '">' + lbl + '</span>';
       }).join(' ');
@@ -2091,16 +2095,17 @@ FINISHING_HTML = """<!DOCTYPE html>
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
 
-  function statusColor(status, station) {
+  function statusColor(status, station, machine) {
     const s = String(status || '').toLowerCase();
     const st = String(station || '').toLowerCase();
+    const m = String(machine || '').toLowerCase();
     if (s.includes('prepress') || st.includes('prepress') || s.includes('graphics') || st.includes('graphics')) return {bg:'#FFFF00', fg:'#1a202c'};
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
-    if (s.includes('roll sheeter') || st.includes('hand cutting'))   return {bg:'#1BFC06', fg:'#1a202c'};
+    if (st.includes('roll sheeter') || m.includes('hand cutting'))   return {bg:'#1BFC06', fg:'#1a202c'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
     if (s.includes('progress')||s.includes('active')||s.includes('run')) return {bg:'#dbeafe', fg:'#1d4ed8'};
     if (s.includes('done')||s.includes('complet')||s.includes('finish')) return {bg:'#dcfce7', fg:'#16a34a'};
@@ -2371,7 +2376,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
         }
       }
       const badges = r.jobStatuses.map(function(s) {
-        const c = statusColor(s.status, s.currentStation);
+        const c = statusColor(s.status, s.currentStation, s.machineName);
         const lbl = esc(s.status) + (s.currentStation ? ' @ ' + esc(s.currentStation) : '');
         return '<span class="job-status-badge" style="background:' + c.bg + ';color:' + c.fg + '">' + lbl + '</span>';
       }).join(' ');
@@ -2403,16 +2408,17 @@ SHIPPING_HTML = """<!DOCTYPE html>
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
 
-  function statusColor(status, station) {
+  function statusColor(status, station, machine) {
     const s = String(status || '').toLowerCase();
     const st = String(station || '').toLowerCase();
+    const m = String(machine || '').toLowerCase();
     if (s.includes('prepress') || st.includes('prepress') || s.includes('graphics') || st.includes('graphics')) return {bg:'#FFFF00', fg:'#1a202c'};
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
-    if (s.includes('roll sheeter') || st.includes('hand cutting'))   return {bg:'#1BFC06', fg:'#1a202c'};
+    if (st.includes('roll sheeter') || m.includes('hand cutting'))   return {bg:'#1BFC06', fg:'#1a202c'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
     if (s.includes('progress')||s.includes('active')||s.includes('run')) return {bg:'#dbeafe', fg:'#1d4ed8'};
     if (s.includes('done')||s.includes('complet')||s.includes('finish')) return {bg:'#dcfce7', fg:'#16a34a'};
