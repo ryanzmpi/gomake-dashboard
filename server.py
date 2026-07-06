@@ -580,7 +580,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         if (!jobs || !jobs.length) return false;
         return jobs.every(job => {
           const statuses = job.jobStatuses || [];
-          if (!statuses.length) return false;
+          if (!statuses.length) return true; // GoMake clears statuses when done
           return statuses.every(s => /done|complet|finish/i.test(String(s.status || '')));
         });
       }
