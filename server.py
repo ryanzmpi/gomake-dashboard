@@ -2617,7 +2617,7 @@ async def debug_dates():
             raise HTTPException(status_code=502, detail=f"Could not reach GoMake: {e}")
 
 
-@app.post("/api/sync")
+@app.api_route("/api/sync", methods=["GET", "POST"])
 async def trigger_sync():
     """Manually trigger a GoMake → ShipStation sync."""
     if not SS_API_KEY or not SS_API_SECRET:
