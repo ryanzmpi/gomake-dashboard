@@ -2581,6 +2581,36 @@ async def debug_order(order_number: str):
     raise HTTPException(status_code=404, detail=f"Order {order_number} not found.")
 
 
+@app.get("/api/debug/order-detail/{order_number}")
+async def debug_order_detail(order_number: str):
+    """Returns the full GoMake order detail (documentDeliveryAddresses, documentItems, etc.)."""
+    if not CLIENT_ID or not CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="Server credentials not configured.")
+    headers = {"X-Client-Id": CLIENT_ID, "X-Client-Secret": CLIENT_SECRET, "Content-Type": "application/json"}
+    async with httpx.AsyncClient(timeout=30) as client:
+        # Step 1: find the order ID from the list
+        order_id = None
+        for page_num in range(1, 20):
+            resp = await client.post(f"{GOMAKE_BASE}/sales-orders/list", headers=headers,
+                                     json={"model": {"pageSize": PAGE_SIZE, "pageNumber": page_num}})
+            resp.raise_for_status()
+            orders = resp.json().get("data", {}).get("data", [])
+            if not orders:
+                break
+            for o in orders:
+                if str(o.get("number") or "") == order_number:
+                    order_id = o.get("id")
+                    break
+            if order_id or len(orders) < PAGE_SIZE:
+                break
+        if not order_id:
+            raise HTTPException(status_code=404, detail=f"Order {order_number} not found.")
+        # Step 2: fetch full detail
+        resp = await client.get(f"{GOMAKE_BASE}/sales-orders/{order_id}", headers=headers)
+        resp.raise_for_status()
+        return resp.json().get("data", {})
+
+
 @app.get("/api/debug/dates")
 async def debug_dates():
     """Returns raw dueDate values for the first page of orders."""
