@@ -301,6 +301,11 @@ async def _sync_all_orders() -> dict:
                 except Exception:
                     pass
 
+            # Skip Self Collection orders — only sync Delivery orders
+            if not order_detail.get("isHaveDeliveryItem", False):
+                counts["skipped"] += 1
+                continue
+
             ship_to = extract_order_delivery_address(order_detail, contact_name)
             if not ship_to:
                 customer_id = order.get("customerId") or ""
