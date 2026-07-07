@@ -688,6 +688,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
     if (st.includes('roll sheeter') || st.includes('fabric folding') || st.includes('rings') || m.includes('hand cutting')) return {bg:'#1BFC06', fg:'#1a202c'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
@@ -1160,6 +1161,7 @@ PRESS_HTML = """<!DOCTYPE html>
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
     if (st.includes('roll sheeter') || st.includes('fabric folding') || st.includes('rings') || m.includes('hand cutting')) return {bg:'#1BFC06', fg:'#1a202c'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
@@ -1470,6 +1472,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
     if (st.includes('roll sheeter') || st.includes('fabric folding') || st.includes('rings') || m.includes('hand cutting')) return {bg:'#1BFC06', fg:'#1a202c'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
@@ -1783,6 +1786,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
     if (st.includes('roll sheeter') || st.includes('fabric folding') || st.includes('rings') || m.includes('hand cutting')) return {bg:'#1BFC06', fg:'#1a202c'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
@@ -1960,7 +1964,9 @@ FINISHING_HTML = """<!DOCTYPE html>
   function isFinishing(jobStatuses) {
     return (jobStatuses || []).some(s =>
       String(s.status || '').toLowerCase().includes('cutting') ||
-      String(s.currentStation || '').toLowerCase().includes('cutting')
+      String(s.currentStation || '').toLowerCase().includes('cutting') ||
+      String(s.status || '').toLowerCase().includes('folding') ||
+      String(s.currentStation || '').toLowerCase().includes('folding')
     );
   }
 
@@ -2111,6 +2117,7 @@ FINISHING_HTML = """<!DOCTYPE html>
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
     if (st.includes('roll sheeter') || st.includes('fabric folding') || st.includes('rings') || m.includes('hand cutting')) return {bg:'#1BFC06', fg:'#1a202c'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
@@ -2424,6 +2431,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
     if (st.includes('roll sheeter') || st.includes('fabric folding') || st.includes('rings') || m.includes('hand cutting')) return {bg:'#1BFC06', fg:'#1a202c'};
     if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
