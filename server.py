@@ -735,7 +735,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       let cls = "due-none", label = "&#8212;";
       if (r.due_date) {
         const parts = r.due_date.split('-');
-        const displayDate = parts[1] + '-' + parts[2] + '-' + parts[0];
+        const displayDate = parts[1] + '-' + parts[2];
         label = displayDate;
         const d = rowDate(r);
         if (!isNaN(d)) {
@@ -1052,6 +1052,7 @@ PRESS_HTML = """<!DOCTYPE html>
                   due_date: dueDate,
                   product_name: job.productName || '',
                   quantity: job.quantity || '',
+                  notes: String(order.notes || '').trim(),
                   jobStatuses: job.jobStatuses || []
                 });
               }
@@ -1080,11 +1081,14 @@ PRESS_HTML = """<!DOCTYPE html>
     let rows = pressJobs.filter(r =>
       r.order_number.toLowerCase().includes(query) ||
       r.product_name.toLowerCase().includes(query) ||
-      r.due_date.toLowerCase().includes(query)
+      r.due_date.toLowerCase().includes(query) ||
+      (r.notes || '').toLowerCase().includes(query)
     );
     rows.sort((a, b) => {
       const va = a[sortCol] ?? '', vb = b[sortCol] ?? '';
-      return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      const primary = sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      if (primary !== 0) return primary;
+      return String(a.notes ?? '').localeCompare(String(b.notes ?? ''));
     });
     document.getElementById("jobCount").textContent = rows.length;
     if (!rows.length) {
@@ -1110,7 +1114,7 @@ PRESS_HTML = """<!DOCTYPE html>
       let cls = "due-none", label = "&#8212;";
       if (r.due_date) {
         const parts = r.due_date.split('-');
-        const displayDate = parts[1] + '-' + parts[2] + '-' + parts[0];
+        const displayDate = parts[1] + '-' + parts[2];
         label = displayDate;
         const d = rowDate(r);
         if (d && !isNaN(d)) {
@@ -1129,12 +1133,13 @@ PRESS_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
+        '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
 
     function sectionHeader(cls, label, count) {
-      return '<tr class="section-header ' + cls + '"><td colspan="5">' + label + ' (' + count + ')</td></tr>';
+      return '<tr class="section-header ' + cls + '"><td colspan="6">' + label + ' (' + count + ')</td></tr>';
     }
 
     let tBody = '';
@@ -1148,6 +1153,7 @@ PRESS_HTML = """<!DOCTYPE html>
       '<th data-col="due_date" onclick="sortBy(this.dataset.col)">Due Date ' + sortIcon("due_date") + '</th>' +
       '<th data-col="product_name" onclick="sortBy(this.dataset.col)">Job Name ' + sortIcon("product_name") + '</th>' +
       '<th data-col="quantity" onclick="sortBy(this.dataset.col)">Qty ' + sortIcon("quantity") + '</th>' +
+      '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
       '<th class="no-sort">Status</th>' +
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
@@ -1363,6 +1369,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
                   due_date: dueDate,
                   product_name: job.productName || '',
                   quantity: job.quantity || '',
+                  notes: String(order.notes || '').trim(),
                   jobStatuses: job.jobStatuses || []
                 });
               }
@@ -1391,11 +1398,14 @@ PREPRESS_HTML = """<!DOCTYPE html>
     let rows = prepressJobs.filter(r =>
       r.order_number.toLowerCase().includes(query) ||
       r.product_name.toLowerCase().includes(query) ||
-      r.due_date.toLowerCase().includes(query)
+      r.due_date.toLowerCase().includes(query) ||
+      (r.notes || '').toLowerCase().includes(query)
     );
     rows.sort((a, b) => {
       const va = a[sortCol] ?? '', vb = b[sortCol] ?? '';
-      return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      const primary = sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      if (primary !== 0) return primary;
+      return String(a.notes ?? '').localeCompare(String(b.notes ?? ''));
     });
     document.getElementById("jobCount").textContent = rows.length;
     if (!rows.length) {
@@ -1421,7 +1431,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
       let cls = "due-none", label = "&#8212;";
       if (r.due_date) {
         const parts = r.due_date.split('-');
-        const displayDate = parts[1] + '-' + parts[2] + '-' + parts[0];
+        const displayDate = parts[1] + '-' + parts[2];
         label = displayDate;
         const d = rowDate(r);
         if (d && !isNaN(d)) {
@@ -1440,12 +1450,13 @@ PREPRESS_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
+        '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
 
     function sectionHeader(cls, label, count) {
-      return '<tr class="section-header ' + cls + '"><td colspan="5">' + label + ' (' + count + ')</td></tr>';
+      return '<tr class="section-header ' + cls + '"><td colspan="6">' + label + ' (' + count + ')</td></tr>';
     }
 
     let tBody = '';
@@ -1459,6 +1470,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
       '<th data-col="due_date" onclick="sortBy(this.dataset.col)">Due Date ' + sortIcon("due_date") + '</th>' +
       '<th data-col="product_name" onclick="sortBy(this.dataset.col)">Job Name ' + sortIcon("product_name") + '</th>' +
       '<th data-col="quantity" onclick="sortBy(this.dataset.col)">Qty ' + sortIcon("quantity") + '</th>' +
+      '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
       '<th class="no-sort">Status</th>' +
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
@@ -1677,6 +1689,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
                   due_date: dueDate,
                   product_name: job.productName || '',
                   quantity: job.quantity || '',
+                  notes: String(order.notes || '').trim(),
                   jobStatuses: job.jobStatuses || []
                 });
               }
@@ -1705,11 +1718,14 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
     let rows = wideFormatJobs.filter(r =>
       r.order_number.toLowerCase().includes(query) ||
       r.product_name.toLowerCase().includes(query) ||
-      r.due_date.toLowerCase().includes(query)
+      r.due_date.toLowerCase().includes(query) ||
+      (r.notes || '').toLowerCase().includes(query)
     );
     rows.sort((a, b) => {
       const va = a[sortCol] ?? '', vb = b[sortCol] ?? '';
-      return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      const primary = sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      if (primary !== 0) return primary;
+      return String(a.notes ?? '').localeCompare(String(b.notes ?? ''));
     });
     document.getElementById("jobCount").textContent = rows.length;
     if (!rows.length) {
@@ -1735,7 +1751,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
       let cls = "due-none", label = "&#8212;";
       if (r.due_date) {
         const parts = r.due_date.split('-');
-        const displayDate = parts[1] + '-' + parts[2] + '-' + parts[0];
+        const displayDate = parts[1] + '-' + parts[2];
         label = displayDate;
         const d = rowDate(r);
         if (d && !isNaN(d)) {
@@ -1754,12 +1770,13 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
+        '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
 
     function sectionHeader(cls, label, count) {
-      return '<tr class="section-header ' + cls + '"><td colspan="5">' + label + ' (' + count + ')</td></tr>';
+      return '<tr class="section-header ' + cls + '"><td colspan="6">' + label + ' (' + count + ')</td></tr>';
     }
 
     let tBody = '';
@@ -1773,6 +1790,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
       '<th data-col="due_date" onclick="sortBy(this.dataset.col)">Due Date ' + sortIcon("due_date") + '</th>' +
       '<th data-col="product_name" onclick="sortBy(this.dataset.col)">Job Name ' + sortIcon("product_name") + '</th>' +
       '<th data-col="quantity" onclick="sortBy(this.dataset.col)">Qty ' + sortIcon("quantity") + '</th>' +
+      '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
       '<th class="no-sort">Status</th>' +
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
@@ -2008,6 +2026,7 @@ FINISHING_HTML = """<!DOCTYPE html>
                   due_date: dueDate,
                   product_name: job.productName || '',
                   quantity: job.quantity || '',
+                  notes: String(order.notes || '').trim(),
                   jobStatuses: job.jobStatuses || []
                 });
               }
@@ -2036,11 +2055,14 @@ FINISHING_HTML = """<!DOCTYPE html>
     let rows = finishingJobs.filter(r =>
       r.order_number.toLowerCase().includes(query) ||
       r.product_name.toLowerCase().includes(query) ||
-      r.due_date.toLowerCase().includes(query)
+      r.due_date.toLowerCase().includes(query) ||
+      (r.notes || '').toLowerCase().includes(query)
     );
     rows.sort((a, b) => {
       const va = a[sortCol] ?? '', vb = b[sortCol] ?? '';
-      return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      const primary = sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      if (primary !== 0) return primary;
+      return String(a.notes ?? '').localeCompare(String(b.notes ?? ''));
     });
     document.getElementById("jobCount").textContent = rows.length;
     if (!rows.length) {
@@ -2066,7 +2088,7 @@ FINISHING_HTML = """<!DOCTYPE html>
       let cls = "due-none", label = "&#8212;";
       if (r.due_date) {
         const parts = r.due_date.split('-');
-        const displayDate = parts[1] + '-' + parts[2] + '-' + parts[0];
+        const displayDate = parts[1] + '-' + parts[2];
         label = displayDate;
         const d = rowDate(r);
         if (d && !isNaN(d)) {
@@ -2085,12 +2107,13 @@ FINISHING_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
+        '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
 
     function sectionHeader(cls, label, count) {
-      return '<tr class="section-header ' + cls + '"><td colspan="5">' + label + ' (' + count + ')</td></tr>';
+      return '<tr class="section-header ' + cls + '"><td colspan="6">' + label + ' (' + count + ')</td></tr>';
     }
 
     let tBody = '';
@@ -2104,6 +2127,7 @@ FINISHING_HTML = """<!DOCTYPE html>
       '<th data-col="due_date" onclick="sortBy(this.dataset.col)">Due Date ' + sortIcon("due_date") + '</th>' +
       '<th data-col="product_name" onclick="sortBy(this.dataset.col)">Job Name ' + sortIcon("product_name") + '</th>' +
       '<th data-col="quantity" onclick="sortBy(this.dataset.col)">Qty ' + sortIcon("quantity") + '</th>' +
+      '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
       '<th class="no-sort">Status</th>' +
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
@@ -2322,6 +2346,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
                   due_date: dueDate,
                   product_name: job.productName || '',
                   quantity: job.quantity || '',
+                  notes: String(order.notes || '').trim(),
                   jobStatuses: job.jobStatuses || []
                 });
               }
@@ -2350,11 +2375,14 @@ SHIPPING_HTML = """<!DOCTYPE html>
     let rows = shippingJobs.filter(r =>
       r.order_number.toLowerCase().includes(query) ||
       r.product_name.toLowerCase().includes(query) ||
-      r.due_date.toLowerCase().includes(query)
+      r.due_date.toLowerCase().includes(query) ||
+      (r.notes || '').toLowerCase().includes(query)
     );
     rows.sort((a, b) => {
       const va = a[sortCol] ?? '', vb = b[sortCol] ?? '';
-      return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      const primary = sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      if (primary !== 0) return primary;
+      return String(a.notes ?? '').localeCompare(String(b.notes ?? ''));
     });
     document.getElementById("jobCount").textContent = rows.length;
     if (!rows.length) {
@@ -2380,7 +2408,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
       let cls = "due-none", label = "&#8212;";
       if (r.due_date) {
         const parts = r.due_date.split('-');
-        const displayDate = parts[1] + '-' + parts[2] + '-' + parts[0];
+        const displayDate = parts[1] + '-' + parts[2];
         label = displayDate;
         const d = rowDate(r);
         if (d && !isNaN(d)) {
@@ -2399,12 +2427,13 @@ SHIPPING_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
+        '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
 
     function sectionHeader(cls, label, count) {
-      return '<tr class="section-header ' + cls + '"><td colspan="5">' + label + ' (' + count + ')</td></tr>';
+      return '<tr class="section-header ' + cls + '"><td colspan="6">' + label + ' (' + count + ')</td></tr>';
     }
 
     let tBody = '';
@@ -2418,6 +2447,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
       '<th data-col="due_date" onclick="sortBy(this.dataset.col)">Due Date ' + sortIcon("due_date") + '</th>' +
       '<th data-col="product_name" onclick="sortBy(this.dataset.col)">Job Name ' + sortIcon("product_name") + '</th>' +
       '<th data-col="quantity" onclick="sortBy(this.dataset.col)">Qty ' + sortIcon("quantity") + '</th>' +
+      '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
       '<th class="no-sort">Status</th>' +
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
