@@ -1647,7 +1647,8 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
       String(s.currentStation || '').toLowerCase().includes('roll sheeter') ||
       String(s.currentStation || '').toLowerCase().includes('fabric folding') ||
       String(s.currentStation || '').toLowerCase().includes('rings') ||
-      String(s.machineName || '').toLowerCase().includes('hand cutting')
+      String(s.machineName || '').toLowerCase().includes('hand cutting') ||
+      (String(s.currentStation || '').toLowerCase().includes('cutting') && String(s.machineName || '').toLowerCase().includes('cnc'))
     );
   }
 
