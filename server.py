@@ -1981,12 +1981,16 @@ FINISHING_HTML = """<!DOCTYPE html>
   }
 
   function isFinishing(jobStatuses) {
-    return (jobStatuses || []).some(s =>
-      String(s.status || '').toLowerCase().includes('cutting') ||
-      String(s.currentStation || '').toLowerCase().includes('cutting') ||
-      String(s.status || '').toLowerCase().includes('folding') ||
-      String(s.currentStation || '').toLowerCase().includes('folding')
-    );
+    return (jobStatuses || []).some(s => {
+      const station = String(s.currentStation || '').toLowerCase();
+      const status  = String(s.status || '').toLowerCase();
+      const machine = String(s.machineName || '').toLowerCase();
+      const isCutting = status.includes('cutting') || station.includes('cutting');
+      if (isCutting && machine.includes('cnc')) return false; // CNC cutting → Wide Format, not Finishing
+      return isCutting ||
+        status.includes('folding') ||
+        station.includes('folding');
+    });
   }
 
   async function loadOrders(silent = false) {
