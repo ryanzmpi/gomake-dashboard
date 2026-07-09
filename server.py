@@ -1764,6 +1764,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
           else                { cls = "due-ok"; }
         }
       }
+      const machine = (r.jobStatuses.find(s => s.machineName) || {}).machineName || '';
       const badges = r.jobStatuses.map(function(s) {
         const c = statusColor(s.status, s.currentStation, s.machineName);
         const lbl = esc(s.status) + (s.currentStation ? ' @ ' + esc(s.currentStation) : '');
@@ -1774,13 +1775,14 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
+        '<td>' + esc(machine) + '</td>' +
         '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
 
     function sectionHeader(cls, label, count) {
-      return '<tr class="section-header ' + cls + '"><td colspan="6">' + label + ' (' + count + ')</td></tr>';
+      return '<tr class="section-header ' + cls + '"><td colspan="7">' + label + ' (' + count + ')</td></tr>';
     }
 
     let tBody = '';
@@ -1794,6 +1796,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
       '<th data-col="due_date" onclick="sortBy(this.dataset.col)">Due Date ' + sortIcon("due_date") + '</th>' +
       '<th data-col="product_name" onclick="sortBy(this.dataset.col)">Job Name ' + sortIcon("product_name") + '</th>' +
       '<th data-col="quantity" onclick="sortBy(this.dataset.col)">Qty ' + sortIcon("quantity") + '</th>' +
+      '<th class="no-sort">Device</th>' +
       '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
       '<th class="no-sort">Status</th>' +
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
