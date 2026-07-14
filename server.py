@@ -301,8 +301,16 @@ async def _sync_all_orders() -> dict:
                 except Exception:
                     pass
 
-            # Skip Self Collection orders — only sync Delivery orders
-            if not order_detail.get("isHaveDeliveryItem", False):
+            # Skip Self Collection orders — only sync Delivery orders.
+            # isHaveDeliveryItem can be unreliable; also check documentDeliveryAddresses
+            # and whether any line item has productName "Delivery".
+            has_delivery_flag = order_detail.get("isHaveDeliveryItem", False)
+            has_delivery_address = bool(order_detail.get("documentDeliveryAddresses"))
+            has_delivery_item = any(
+                str(item.get("productName") or "").strip().lower() == "delivery"
+                for item in (order_detail.get("documentItems") or [])
+            )
+            if not (has_delivery_flag or has_delivery_address or has_delivery_item):
                 counts["skipped"] += 1
                 continue
 
