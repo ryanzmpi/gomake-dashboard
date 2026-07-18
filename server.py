@@ -2808,36 +2808,37 @@ async def create_apparel_quote(req: ApparelQuoteRequest):
         if not quote_id:
             raise HTTPException(status_code=502, detail="GoMake did not return a quote ID.")
 
-        # Poll until the quote has pricing
-        total = None
-        currency = None
-        for _ in range(QUOTE_POLL_TRIES):
-            await asyncio.sleep(QUOTE_POLL_DELAY)
-            try:
-                g = await client.get(f"{GOMAKE_BASE}/quotes/{quote_id}",
-                                     headers=GOMAKE_HEADERS, timeout=30)
-                if g.status_code != 200:
-                    continue
-                data = g.json().get("data") or {}
-                total = data.get("totalPrice")
-                currency = data.get("currency")
-                if total:
-                    break
-            except httpx.HTTPError:
-                continue
-
-    if not total:
-        return JSONResponse(content={
-            "success": False, "pending": True, "quoteNumber": quote_num,
-            "message": "Quote created; pricing is still processing.",
-        })
-
+    # Return immediately; the page polls /api/quote/status/{id} for pricing
     return JSONResponse(content={
         "success": True,
+        "quoteId": quote_id,
         "quoteNumber": quote_num,
+    })
+
+
+@app.get("/api/quote/status/{quote_id}")
+async def apparel_quote_status(quote_id: str, quantity: int = Query(1, ge=1)):
+    """Check whether a GoMake quote has been priced yet."""
+    if not CLIENT_ID or not CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="Server credentials not configured.")
+    async with httpx.AsyncClient() as client:
+        try:
+            g = await client.get(f"{GOMAKE_BASE}/quotes/{quote_id}",
+                                 headers=GOMAKE_HEADERS, timeout=30)
+        except httpx.HTTPError as e:
+            raise HTTPException(status_code=502, detail=f"Could not reach GoMake: {e}")
+    if g.status_code != 200:
+        return JSONResponse(content={"priced": False})
+    data = g.json().get("data") or {}
+    total = data.get("totalPrice")
+    if not total:
+        return JSONResponse(content={"priced": False})
+    return JSONResponse(content={
+        "priced": True,
+        "quoteNumber": data.get("number"),
         "totalPrice": total,
-        "unitPrice": round(total / req.quantity, 2),
-        "currency": currency or "USD",
+        "unitPrice": round(total / max(quantity, 1), 2),
+        "currency": data.get("currency") or "USD",
     })
 
 
