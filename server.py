@@ -882,6 +882,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Marathon Printing Orders Dashboard", lifespan=lifespan)
 
+# CORS: allow the apparel designer page (GitHub Pages) to call /api/quote
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],          # tighten to your GitHub Pages URL if desired
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
+
 # Serve logo and other static assets if the static folder exists
 _static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(_static_dir):
@@ -2730,6 +2739,106 @@ async def trigger_sync():
 async def sync_status():
     """Return the current sync state."""
     return JSONResponse(content=_sync_state)
+
+
+# ── Apparel designer: live quote via GoMake ──────────────────────────────────
+
+from pydantic import BaseModel
+
+APPAREL_CUSTOMER_CODE = "8066"
+APPAREL_CUSTOMER_NAME = "Apparel Quotes"
+QUOTE_POLL_TRIES      = 15   # x 2s = up to ~30s wait for pricing
+QUOTE_POLL_DELAY      = 2
+
+
+class ApparelQuoteRequest(BaseModel):
+    product: str                 # e.g. "Softstyle CVC (Gildan 64000CVC · 60/40 ring-spun cotton/poly)"
+    color: str
+    quantity: int
+    locations: list = []         # e.g. ["front", "back"]
+    name: str = ""
+    email: str = ""
+
+
+@app.post("/api/quote")
+async def create_apparel_quote(req: ApparelQuoteRequest):
+    """Create a quote in GoMake for an apparel job and return the full price."""
+    if not CLIENT_ID or not CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="Server credentials not configured.")
+    if req.quantity < 1 or req.quantity > 100000:
+        raise HTTPException(status_code=400, detail="Invalid quantity.")
+
+    locations = [l for l in req.locations if l in ("front", "back")]
+    if locations:
+        print_desc = (f"screen printed in {len(locations)} location(s): "
+                      + " and ".join(locations))
+    else:
+        print_desc = "blank, no printing"
+    prompt = (f"{req.quantity} x {req.product} t-shirts/apparel, "
+              f"color {req.color}, {print_desc}")
+
+    payload = {
+        "customerCode": APPAREL_CUSTOMER_CODE,
+        "customerName": APPAREL_CUSTOMER_NAME,
+        "quoteItemPrompts": [prompt],
+    }
+    if req.name or req.email:
+        payload["quoteContacts"] = [{
+            "contactName":  req.name or "Web Customer",
+            "contactMail":  req.email,
+            "contactPhone": "",
+        }]
+
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post(
+                f"{GOMAKE_BASE}/quotes/create-quote-using-ai",
+                headers=GOMAKE_HEADERS, json=payload, timeout=60,
+            )
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(status_code=502,
+                                detail=f"GoMake rejected the quote: {e.response.text[:300]}")
+        except httpx.HTTPError as e:
+            raise HTTPException(status_code=502, detail=f"Could not reach GoMake: {e}")
+
+        created = resp.json().get("data") or {}
+        quote_id  = created.get("QuoteID")
+        quote_num = created.get("QuoteNumber")
+        if not quote_id:
+            raise HTTPException(status_code=502, detail="GoMake did not return a quote ID.")
+
+        # Poll until the quote has pricing
+        total = None
+        currency = None
+        for _ in range(QUOTE_POLL_TRIES):
+            await asyncio.sleep(QUOTE_POLL_DELAY)
+            try:
+                g = await client.get(f"{GOMAKE_BASE}/quotes/{quote_id}",
+                                     headers=GOMAKE_HEADERS, timeout=30)
+                if g.status_code != 200:
+                    continue
+                data = g.json().get("data") or {}
+                total = data.get("totalPrice")
+                currency = data.get("currency")
+                if total:
+                    break
+            except httpx.HTTPError:
+                continue
+
+    if not total:
+        return JSONResponse(content={
+            "success": False, "pending": True, "quoteNumber": quote_num,
+            "message": "Quote created; pricing is still processing.",
+        })
+
+    return JSONResponse(content={
+        "success": True,
+        "quoteNumber": quote_num,
+        "totalPrice": total,
+        "unitPrice": round(total / req.quantity, 2),
+        "currency": currency or "USD",
+    })
 
 
 if __name__ == "__main__":
