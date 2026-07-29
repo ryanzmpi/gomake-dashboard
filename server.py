@@ -268,9 +268,48 @@ def build_ss_order(order: dict, ship_to: dict, items: list, order_detail: dict =
     return payload
 
 
+async def _get_ss_tracking(client: httpx.AsyncClient, order_number: str) -> Optional[dict]:
+    """Return the first ShipStation shipment with a tracking number for this order, or None."""
+    try:
+        r = await client.get(
+            f"{SS_BASE}/shipments",
+            headers=SS_HEADERS,
+            params={"orderNumber": order_number},
+            timeout=30,
+        )
+        r.raise_for_status()
+        for s in r.json().get("shipments", []):
+            tracking = (s.get("trackingNumber") or "").strip()
+            if tracking:
+                return {
+                    "tracking":   tracking,
+                    "carrier":    s.get("carrierCode") or "",
+                    "ship_date":  (s.get("shipDate") or "")[:10],
+                }
+    except Exception:
+        pass
+    return None
+
+
+async def _write_tracking_to_gomake(client: httpx.AsyncClient, order_id: str, current_notes: str, tracking: dict):
+    """Append tracking info to GoMake order's internalNotes."""
+    line = "Tracking: " + tracking["tracking"]
+    if tracking.get("carrier"):
+        line += " (" + tracking["carrier"] + ")"
+    if tracking.get("ship_date"):
+        line += " — shipped " + tracking["ship_date"]
+    new_notes = (current_notes.strip() + "\n" + line).strip() if current_notes.strip() else line
+    await client.put(
+        f"{GOMAKE_BASE}/sales-orders/{order_id}",
+        headers=GOMAKE_HEADERS,
+        json={"internalNotes": new_notes},
+        timeout=30,
+    )
+
+
 async def _sync_all_orders() -> dict:
     """Fetch all open GoMake orders and upsert into ShipStation. Returns counts."""
-    counts = {"ok": 0, "skipped": 0, "error": 0}
+    counts = {"ok": 0, "skipped": 0, "error": 0, "tracking_updated": 0}
     async with httpx.AsyncClient() as client:
         # Fetch open orders
         orders = []
@@ -358,6 +397,18 @@ async def _sync_all_orders() -> dict:
                 counts["ok"] += 1
             except Exception:
                 counts["error"] += 1
+
+            # Reverse sync: pull tracking number from ShipStation → GoMake internalNotes
+            if order_id:
+                try:
+                    tracking = await _get_ss_tracking(client, order_number)
+                    if tracking:
+                        current_notes = (order_detail.get("internalNotes") or "").strip()
+                        if tracking["tracking"] not in current_notes:
+                            await _write_tracking_to_gomake(client, order_id, current_notes, tracking)
+                            counts["tracking_updated"] += 1
+                except Exception:
+                    pass
 
     return counts
 
