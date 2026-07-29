@@ -198,6 +198,7 @@ def build_ss_order(order: dict, ship_to: dict, items: list, order_detail: dict =
     contact_email = order.get("contactEmail") or ""
 
     person_name = ""
+    requested_service = ""
     if order_detail:
         contacts = order_detail.get("documentContacts") or []
         if contacts:
@@ -206,6 +207,17 @@ def build_ss_order(order: dict, ship_to: dict, items: list, order_detail: dict =
                 contact_phone = (contacts[0].get("contactPhone") or "").strip()
             if not contact_email:
                 contact_email = (contacts[0].get("contactMail") or "").strip()
+
+        # Extract carrier/service from the Delivery line item.
+        # workName is cleanest; fall back to details (which may contain HTML).
+        for doc_item in (order_detail.get("documentItems") or []):
+            if str(doc_item.get("productName") or "").strip().lower() == "delivery":
+                svc = (doc_item.get("workName") or "").strip()
+                if not svc:
+                    import re as _re
+                    svc = _re.sub(r"<[^>]+>", "", doc_item.get("details") or "").strip()
+                requested_service = svc
+                break
 
     ship_to_final = dict(ship_to)
     ship_to_final["name"]    = person_name or company_name
@@ -240,7 +252,7 @@ def build_ss_order(order: dict, ship_to: dict, items: list, order_detail: dict =
         "phone":      contact_phone,
     }
 
-    return {
+    payload = {
         "orderNumber":   order_number,
         "orderKey":      order_number,
         "orderStatus":   "awaiting_shipment",
@@ -251,6 +263,9 @@ def build_ss_order(order: dict, ship_to: dict, items: list, order_detail: dict =
         "items":         ss_items,
         "internalNotes": order.get("notes") or "",
     }
+    if requested_service:
+        payload["requestedShippingService"] = requested_service
+    return payload
 
 
 async def _sync_all_orders() -> dict:
