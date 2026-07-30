@@ -285,6 +285,7 @@ async def _get_ss_tracking(client: httpx.AsyncClient, order_number: str) -> Opti
                     "tracking":   tracking,
                     "carrier":    s.get("carrierCode") or "",
                     "ship_date":  (s.get("shipDate") or "")[:10],
+                    "cost":       s.get("shipmentCost"),
                 }
     except Exception:
         pass
@@ -298,6 +299,8 @@ async def _write_tracking_to_gomake(client: httpx.AsyncClient, order_id: str, cu
         line += " (" + tracking["carrier"] + ")"
     if tracking.get("ship_date"):
         line += " — shipped " + tracking["ship_date"]
+    if tracking.get("cost") is not None:
+        line += " — $" + f"{tracking['cost']:.2f}"
     new_notes = (current_notes.strip() + "\n" + line).strip() if current_notes.strip() else line
     await client.put(
         f"{GOMAKE_BASE}/sales-orders/{order_id}",
