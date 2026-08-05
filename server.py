@@ -507,10 +507,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     .legend { margin-top: 14px; font-size: 22px; color: #9ca3af; padding: 0 4px; }
     .summary { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
     .stat-card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 20px 28px; flex: 1; min-width: 200px; border-top: 4px solid #e5e7eb; }
+    .stat-card.created { border-top-color: #3b82f6; }
     .stat-card.due { border-top-color: #d97706; }
     .stat-card.done { border-top-color: #16a34a; }
     .stat-label { font-size: 22px; color: #6b7280; font-weight: 600; margin-bottom: 6px; }
     .stat-value { font-size: 43px; font-weight: 700; color: #1a202c; }
+    .stat-card.created .stat-value { color: #3b82f6; }
     .stat-card.due .stat-value { color: #d97706; }
     .stat-card.done .stat-value { color: #16a34a; }
     .stat-sub { font-size: 22px; color: #6b7280; margin-top: 4px; font-weight: 600; }
@@ -539,6 +541,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 </nav>
 <main>
   <div class="summary">
+    <div class="stat-card created">
+      <div class="stat-label">Created Today</div>
+      <div class="stat-value" id="createdTodayCount">&mdash;</div>
+      <div class="stat-sub" id="createdTodayTotal">&mdash;</div>
+    </div>
     <div class="stat-card due">
       <div class="stat-label">Due Today</div>
       <div class="stat-value" id="dueTodayCount">&mdash;</div>
@@ -681,6 +688,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
 
       const todayStr = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Los_Angeles'}).format(new Date());
+      const createdTodayOrders = rawOrders.filter(o => String(o.creationDate || o.createdDate || "").substring(0, 10) === todayStr);
+      const createdToday = createdTodayOrders.length;
+      const createdTodayTotal = createdTodayOrders.reduce((sum, o) => sum + parseFloat(o.totalPrice || o.totalPayment || 0), 0);
       const dueTodayOrders = rawOrders.filter(o => String(o.dueDate || o.due_date || "").substring(0, 10) === todayStr && !o.readyDate);
       const dueToday = dueTodayOrders.length;
       const dueTodayTotal = dueTodayOrders.reduce((sum, o) => sum + parseFloat(o.totalPrice || o.totalPayment || 0), 0);
@@ -693,6 +703,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       });
       const doneToday = doneTodayOrders.length;
       const doneTodayTotal = doneTodayOrders.reduce((sum, o) => sum + parseFloat(o.totalPrice || o.totalPayment || 0), 0);
+      document.getElementById("createdTodayCount").textContent = createdToday;
+      document.getElementById("createdTodayTotal").textContent = '$' + createdTodayTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
       document.getElementById("dueTodayCount").textContent = dueToday;
       document.getElementById("dueTodayTotal").textContent = '$' + dueTodayTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
       document.getElementById("doneTodayCount").textContent = doneToday;
