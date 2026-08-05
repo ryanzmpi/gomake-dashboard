@@ -688,7 +688,16 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
 
       const todayStr = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Los_Angeles'}).format(new Date());
-      const createdTodayOrders = rawOrders.filter(o => String(o.creationDate || o.createdDate || "").substring(0, 10) === todayStr);
+      // createdDate from GoMake list API is "DD-MM-YYYY HH:MM" — reformat to YYYY-MM-DD for comparison
+      function parseGoMakeCreatedDate(raw) {
+        const s = String(raw || "").trim();
+        if (!s) return "";
+        const datePart = s.split(" ")[0];       // "29-07-2026"
+        const p = datePart.split("-");           // ["29","07","2026"]
+        if (p.length !== 3) return "";
+        return p[2] + "-" + p[1] + "-" + p[0]; // "2026-07-29"
+      }
+      const createdTodayOrders = rawOrders.filter(o => parseGoMakeCreatedDate(o.createdDate) === todayStr);
       const createdToday = createdTodayOrders.length;
       const createdTodayTotal = createdTodayOrders.reduce((sum, o) => sum + parseFloat(o.totalPrice || o.totalPayment || 0), 0);
       const dueTodayOrders = rawOrders.filter(o => String(o.dueDate || o.due_date || "").substring(0, 10) === todayStr && !o.readyDate);
