@@ -2900,6 +2900,61 @@ async def debug_dates():
             raise HTTPException(status_code=502, detail=f"Could not reach GoMake: {e}")
 
 
+@app.get("/api/debug/shipments/{order_number}")
+async def debug_shipments(order_number: str):
+    """Returns ShipStation shipments for a given order number, plus the result of a GoMake internalNotes PUT attempt."""
+    if not SS_API_KEY or not SS_API_SECRET:
+        raise HTTPException(status_code=500, detail="ShipStation credentials not configured.")
+    async with httpx.AsyncClient(timeout=30) as client:
+        # Fetch shipments from ShipStation
+        r = await client.get(
+            f"{SS_BASE}/shipments",
+            headers=SS_HEADERS,
+            params={"orderNumber": order_number},
+        )
+        ss_data = r.json() if r.status_code == 200 else {"error": r.text, "status": r.status_code}
+
+        # Also try a test PUT to GoMake to see what the API returns
+        # Find the GoMake order ID first
+        gomake_id = None
+        gomake_notes = None
+        for page_num in range(1, 20):
+            resp = await client.post(
+                f"{GOMAKE_BASE}/sales-orders/list",
+                headers=GOMAKE_HEADERS,
+                json={"model": {"pageSize": PAGE_SIZE, "pageNumber": page_num}},
+            )
+            orders = resp.json().get("data", {}).get("data", [])
+            if not orders:
+                break
+            for o in orders:
+                if str(o.get("number") or "") == order_number:
+                    gomake_id = o.get("id")
+                    gomake_notes = o.get("internalNotes")
+                    break
+            if gomake_id or len(orders) < PAGE_SIZE:
+                break
+
+        put_result = None
+        if gomake_id:
+            test_note = (gomake_notes or "").strip()
+            test_note = (test_note + "\nDEBUG_TEST").strip()
+            put_r = await client.put(
+                f"{GOMAKE_BASE}/sales-orders/{gomake_id}",
+                headers=GOMAKE_HEADERS,
+                json={"internalNotes": test_note},
+            )
+            put_result = {"status": put_r.status_code, "body": put_r.text[:500]}
+
+        return JSONResponse(content={
+            "order_number": order_number,
+            "gomake_id": gomake_id,
+            "gomake_current_notes": gomake_notes,
+            "shipstation_shipments": ss_data,
+            "gomake_put_result": put_result,
+        })
+
+
 @app.api_route("/api/sync", methods=["GET", "POST"])
 async def trigger_sync():
     """Manually trigger a GoMake → ShipStation sync."""
