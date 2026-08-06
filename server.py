@@ -3246,57 +3246,127 @@ async def debug_shipments(order_number: str):
 
 @app.get("/api/debug/order/{order_number}")
 async def debug_order(order_number: str):
-    """Dump the full raw GoMake order detail for an order, useful for seeing what fields (weight, dimensions, etc.) are available."""
+    """Dump the full raw GoMake order detail — shows every field GoMake returns."""
     async with httpx.AsyncClient(timeout=30) as client:
-        # Find the order in the list first to get its ID
+        # Search all pages for the order (includes closed/shipped)
         gomake_order = None
-        for page_num in range(1, 20):
-            resp = await client.post(
-                f"{GOMAKE_BASE}/sales-orders/list",
-                headers=GOMAKE_HEADERS,
-                json={"model": {"pageSize": PAGE_SIZE, "pageNumber": page_num}},
-            )
-            orders = resp.json().get("data", {}).get("data", [])
-            if not orders:
-                break
-            for o in orders:
-                if str(o.get("number") or "") == order_number:
-                    gomake_order = o
+        for page_num in range(1, 50):
+            try:
+                resp = await client.post(
+                    f"{GOMAKE_BASE}/sales-orders/list",
+                    headers=GOMAKE_HEADERS,
+                    json={"model": {"pageSize": PAGE_SIZE, "pageNumber": page_num}},
+                )
+                resp.raise_for_status()
+                orders = resp.json().get("data", {}).get("data", [])
+                if not orders:
                     break
-            if gomake_order or len(orders) < PAGE_SIZE:
-                break
+                for o in orders:
+                    if str(o.get("number") or "") == order_number:
+                        gomake_order = o
+                        break
+                if gomake_order or len(orders) < PAGE_SIZE:
+                    break
+            except Exception as e:
+                return JSONResponse(content={"error": f"List fetch failed on page {page_num}: {str(e)}"})
 
         if not gomake_order:
-            raise HTTPException(status_code=404, detail=f"Order {order_number} not found in GoMake.")
+            return JSONResponse(status_code=404, content={"error": f"Order {order_number} not found in GoMake list."})
 
         gomake_id = gomake_order.get("id")
 
-        # Fetch full order detail
-        detail = None
+        # Fetch full order detail via GET /sales-orders/{id}
+        detail_status = None
+        detail_raw = None
         detail_error = None
         try:
             r = await client.get(
                 f"{GOMAKE_BASE}/sales-orders/{gomake_id}",
                 headers=GOMAKE_HEADERS,
             )
-            detail = r.json() if r.status_code == 200 else {"error": r.text, "status": r.status_code}
+            detail_status = r.status_code
+            try:
+                detail_raw = r.json()
+            except Exception:
+                detail_raw = r.text
         except Exception as e:
             detail_error = str(e)
 
-        # Extract just the documentItems fields for easier inspection
-        items_summary = []
-        if detail and isinstance(detail, dict):
-            items = (detail.get("data") or detail).get("documentItems") or []
-            for item in items:
-                items_summary.append({k: v for k, v in item.items() if v not in (None, "", [], {})})
+        # Unwrap {"data": {...}} if present
+        detail_unwrapped = None
+        if isinstance(detail_raw, dict):
+            detail_unwrapped = detail_raw.get("data") or detail_raw
+
+        # Pull out documentItems with all fields (including nulls so we can see the schema)
+        items_full = []
+        if isinstance(detail_unwrapped, dict):
+            items_full = detail_unwrapped.get("documentItems") or []
 
         return JSONResponse(content={
-            "order_number":   order_number,
-            "gomake_id":      gomake_id,
-            "list_fields":    {k: v for k, v in gomake_order.items() if v not in (None, "", [], {})},
-            "detail_raw":     detail,
-            "detail_error":   detail_error,
-            "items_summary":  items_summary,
+            "order_number":      order_number,
+            "gomake_id":         gomake_id,
+            "detail_http_status": detail_status,
+            "detail_error":      detail_error,
+            "document_items":    items_full,       # full item data with all fields
+            "detail_keys":       list(detail_unwrapped.keys()) if isinstance(detail_unwrapped, dict) else [],
+            "detail_raw":        detail_raw,       # complete raw response
+        })
+
+
+@app.get("/api/debug/products")
+async def debug_products():
+    """Dump raw GoMake product SKUs to check for weight/dimension fields."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        skus_status = None
+        skus_raw = None
+        skus_error = None
+        try:
+            r = await client.get(
+                f"{GOMAKE_BASE}/products/skus",
+                headers=GOMAKE_HEADERS,
+            )
+            skus_status = r.status_code
+            try:
+                skus_raw = r.json()
+            except Exception:
+                skus_raw = r.text
+        except Exception as e:
+            skus_error = str(e)
+
+        products_status = None
+        products_raw = None
+        products_error = None
+        try:
+            r2 = await client.get(
+                f"{GOMAKE_BASE}/products/list",
+                headers=GOMAKE_HEADERS,
+            )
+            products_status = r2.status_code
+            try:
+                products_raw = r2.json()
+            except Exception:
+                products_raw = r2.text
+        except Exception as e:
+            products_error = str(e)
+
+        # Summarise first SKU's keys so we can see the schema
+        sku_keys = []
+        sku_sample = None
+        if isinstance(skus_raw, dict):
+            items = skus_raw.get("data") or skus_raw.get("skus") or []
+            if isinstance(items, list) and items:
+                sku_sample = items[0]
+                sku_keys = list(sku_sample.keys())
+
+        return JSONResponse(content={
+            "skus_http_status":     skus_status,
+            "skus_error":           skus_error,
+            "sku_keys":             sku_keys,
+            "sku_sample":           sku_sample,
+            "skus_raw":             skus_raw,
+            "products_http_status": products_status,
+            "products_error":       products_error,
+            "products_raw":         products_raw,
         })
 
 
