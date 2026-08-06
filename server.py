@@ -622,6 +622,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   <a href="/wide-format">Wide Format</a>
   <a href="/finishing">Finishing</a>
   <a href="/shipping">Shipping</a>
+  <a href="/completed">Completed</a>
 </nav>
 <main>
   <div class="summary">
@@ -1144,6 +1145,7 @@ PRESS_HTML = """<!DOCTYPE html>
   <a href="/wide-format">Wide Format</a>
   <a href="/finishing">Finishing</a>
   <a href="/shipping">Shipping</a>
+  <a href="/completed">Completed</a>
 </nav>
 <main>
   <div class="card">
@@ -1472,6 +1474,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
   <a href="/wide-format">Wide Format</a>
   <a href="/finishing">Finishing</a>
   <a href="/shipping">Shipping</a>
+  <a href="/completed">Completed</a>
 </nav>
 <main>
   <div class="card">
@@ -1790,6 +1793,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
   <a href="/wide-format" class="active">Wide Format</a>
   <a href="/finishing">Finishing</a>
   <a href="/shipping">Shipping</a>
+  <a href="/completed">Completed</a>
 </nav>
 <main>
   <div class="card">
@@ -2135,6 +2139,7 @@ FINISHING_HTML = """<!DOCTYPE html>
   <a href="/wide-format">Wide Format</a>
   <a href="/finishing" class="active">Finishing</a>
   <a href="/shipping">Shipping</a>
+  <a href="/completed">Completed</a>
 </nav>
 <main>
   <div class="card">
@@ -2716,6 +2721,273 @@ SHIPPING_HTML = """<!DOCTYPE html>
 @app.get("/shipping", response_class=HTMLResponse)
 async def serve_shipping():
     return HTMLResponse(content=SHIPPING_HTML)
+
+
+@app.get("/api/completed-orders")
+async def get_completed_orders():
+    """Return ShipStation shipments joined with GoMake order data."""
+    if not SS_API_KEY or not SS_API_SECRET:
+        raise HTTPException(status_code=500, detail="ShipStation credentials not configured.")
+    async with httpx.AsyncClient() as client:
+        # Fetch GoMake orders (all pages) → build number→data map
+        gomake_map: dict = {}
+        gm_page = 1
+        while True:
+            try:
+                resp = await client.post(
+                    f"{GOMAKE_BASE}/sales-orders/list",
+                    headers=GOMAKE_HEADERS,
+                    json={"model": {"pageSize": PAGE_SIZE, "pageNumber": gm_page}},
+                    timeout=30,
+                )
+                resp.raise_for_status()
+                orders = resp.json().get("data", {}).get("data", [])
+                if not orders:
+                    break
+                for o in orders:
+                    num = str(o.get("number") or "")
+                    if num:
+                        gomake_map[num] = o
+                if len(orders) < PAGE_SIZE:
+                    break
+                gm_page += 1
+            except Exception:
+                break
+
+        # Fetch ShipStation shipments (last 60 days, skip voided)
+        since = (datetime.utcnow() - timedelta(days=60)).strftime("%Y-%m-%d")
+        results = []
+        ss_page = 1
+        while True:
+            try:
+                r = await client.get(
+                    f"{SS_BASE}/shipments",
+                    headers=SS_HEADERS,
+                    params={"shipDateStart": since, "page": ss_page, "pageSize": 100},
+                    timeout=30,
+                )
+                r.raise_for_status()
+                shipments = r.json().get("shipments", [])
+                if not shipments:
+                    break
+                for s in shipments:
+                    if s.get("voided"):
+                        continue
+                    order_number = str(s.get("orderNumber") or "")
+                    gm = gomake_map.get(order_number, {})
+                    results.append({
+                        "order_number":   order_number,
+                        "customer_name":  gm.get("customerName") or gm.get("contactName") or "",
+                        "due_date":       str(gm.get("dueDate") or "")[:10],
+                        "notes":          gm.get("notes") or "",
+                        "ship_date":      str(s.get("shipDate") or "")[:10],
+                        "carrier_code":   s.get("carrierCode") or "",
+                        "service_code":   s.get("serviceCode") or "",
+                        "tracking_number": s.get("trackingNumber") or "",
+                        "shipping_cost":  s.get("shipmentCost"),
+                    })
+                if len(shipments) < 100:
+                    break
+                ss_page += 1
+            except Exception:
+                break
+
+        results.sort(key=lambda x: x["ship_date"], reverse=True)
+        return JSONResponse(content=results)
+
+
+COMPLETED_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Completed Orders</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a202c; min-height: 100vh; }
+    header { background: #22475A; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+    header .header-left { display: flex; align-items: center; gap: 20px; }
+    header img.logo { height: 70px; width: auto; }
+    header h1 { font-size: 36px; font-weight: 600; }
+    .status-bar { font-size: 22px; opacity: 0.85; text-align: right; }
+    nav { background: #1a3648; display: flex; gap: 4px; padding: 0 24px; }
+    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 23px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
+    nav a:hover { color: white; }
+    nav a.active { color: white; border-bottom-color: white; }
+    main { padding: 24px 28px; }
+    .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 20px 24px; }
+    .toolbar { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+    .toolbar-left { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+    .badge { background: #22475A; color: #fff; border-radius: 999px; padding: 2px 12px; font-size: 20px; font-weight: 700; }
+    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 20px; width: 240px; }
+    .btn-primary { background: #22475A; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-size: 20px; cursor: pointer; }
+    .btn-primary:hover { background: #1a3648; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    table { width: 100%; border-collapse: collapse; font-size: 22px; }
+    th { text-align: left; padding: 10px 12px; border-bottom: 2px solid #e5e7eb; color: #374151; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    th.no-sort { cursor: default; }
+    td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+    tr:hover td { background: #f9fafb; }
+    .order-num { font-weight: 700; color: #22475A; white-space: nowrap; }
+    .tracking-link { color: #2563eb; text-decoration: none; font-weight: 600; }
+    .tracking-link:hover { text-decoration: underline; }
+    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 25px; }
+    .state .icon { font-size: 29px; margin-bottom: 8px; }
+    .error-msg { color: #dc2626; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #22475A; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .cost-cell { font-weight: 600; color: #16a34a; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <img class="logo" src="/static/logo.png" alt="Logo" />
+    <h1>Orders Dashboard</h1>
+  </div>
+  <div class="status-bar" id="statusBar">Loading&hellip;</div>
+</header>
+<nav>
+  <a href="/">All Orders</a>
+  <a href="/prepress">Prepress / Graphics</a>
+  <a href="/press">Press</a>
+  <a href="/wide-format">Wide Format</a>
+  <a href="/finishing">Finishing</a>
+  <a href="/shipping">Shipping</a>
+  <a href="/completed" class="active">Completed</a>
+</nav>
+<main>
+  <div class="card">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <strong style="font-size: 27px">Completed Orders <span class="badge" id="orderCount">0</span></strong>
+        <input class="search-box" type="search" id="searchBox" placeholder="Search&hellip;" oninput="renderTable()" />
+      </div>
+      <div class="toolbar-left">
+        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()">&#8635; Refresh</button>
+      </div>
+    </div>
+    <div id="tableContainer"><div class="state"><span class="spinner"></span> Loading&hellip;</div></div>
+  </div>
+</main>
+<script>
+  let allOrders = [];
+  let sortCol = 'ship_date', sortAsc = false;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function trackingUrl(carrier, tracking) {
+    const c = (carrier || '').toLowerCase();
+    const t = encodeURIComponent(tracking);
+    if (c.includes('usps') || c.includes('stamps'))
+      return 'https://tools.usps.com/go/TrackConfirmAction?tLabels=' + t;
+    if (c.includes('ups'))
+      return 'https://www.ups.com/track?tracknum=' + t;
+    if (c.includes('fedex'))
+      return 'https://www.fedex.com/fedextrack/?tracknumbers=' + t;
+    return 'https://www.google.com/search?q=' + t + '+tracking';
+  }
+
+  function formatService(carrier, service) {
+    const raw = service || carrier || '';
+    return raw.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function formatDate(d) {
+    if (!d) return '—';
+    const p = d.split('-');
+    if (p.length < 3) return d;
+    return p[1] + '-' + p[2]; // MM-DD
+  }
+
+  async function loadOrders() {
+    const btn = document.getElementById('refreshBtn');
+    btn.disabled = true; btn.textContent = 'Loading…';
+    document.getElementById('statusBar').textContent = 'Loading…';
+    try {
+      const res = await fetch('/api/completed-orders');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      allOrders = await res.json();
+      const now = new Date().toLocaleTimeString();
+      document.getElementById('statusBar').innerHTML = '&#10003; Updated ' + now + ' &nbsp;(last 60 days)';
+      renderTable();
+    } catch (err) {
+      document.getElementById('tableContainer').innerHTML =
+        '<div class="state error-msg"><div class="icon">&#9888;</div>' + esc(err.message) + '</div>';
+      document.getElementById('statusBar').textContent = 'Error loading';
+    } finally {
+      btn.disabled = false; btn.textContent = '↻ Refresh';
+    }
+  }
+
+  function sortBy(col) {
+    if (sortCol === col) { sortAsc = !sortAsc; } else { sortCol = col; sortAsc = true; }
+    renderTable();
+  }
+  function sortIcon(col) { return sortCol !== col ? '&#8597;' : (sortAsc ? '&#8593;' : '&#8595;'); }
+
+  function renderTable() {
+    const query = document.getElementById('searchBox').value.toLowerCase();
+    let rows = allOrders.filter(r =>
+      r.order_number.toLowerCase().includes(query) ||
+      (r.customer_name || '').toLowerCase().includes(query) ||
+      (r.tracking_number || '').toLowerCase().includes(query) ||
+      (r.service_code || '').toLowerCase().includes(query) ||
+      (r.notes || '').toLowerCase().includes(query)
+    );
+    rows.sort((a, b) => {
+      const va = a[sortCol] ?? '', vb = b[sortCol] ?? '';
+      return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+    });
+    document.getElementById('orderCount').textContent = rows.length;
+    if (!rows.length) {
+      document.getElementById('tableContainer').innerHTML =
+        '<div class="state"><div class="icon">&#128269;</div>No completed orders found.</div>';
+      return;
+    }
+    const tBody = rows.map(r => {
+      const url = r.tracking_number ? trackingUrl(r.carrier_code, r.tracking_number) : '';
+      const trackingCell = r.tracking_number
+        ? '<a class="tracking-link" href="' + esc(url) + '" target="_blank">' + esc(r.tracking_number) + '</a>'
+        : '&#8212;';
+      const costCell = r.shipping_cost != null
+        ? '$' + parseFloat(r.shipping_cost).toFixed(2)
+        : '&#8212;';
+      return '<tr>' +
+        '<td class="order-num">' + esc(r.order_number) + '</td>' +
+        '<td>' + esc(r.customer_name) + '</td>' +
+        '<td>' + esc(r.notes) + '</td>' +
+        '<td>' + formatDate(r.due_date) + '</td>' +
+        '<td>' + formatDate(r.ship_date) + '</td>' +
+        '<td>' + esc(formatService(r.carrier_code, r.service_code)) + '</td>' +
+        '<td>' + trackingCell + '</td>' +
+        '<td class="cost-cell">' + costCell + '</td>' +
+        '</tr>';
+    }).join('');
+    document.getElementById('tableContainer').innerHTML =
+      '<table><thead><tr>' +
+      '<th data-col="order_number" onclick="sortBy(this.dataset.col)">Order # ' + sortIcon('order_number') + '</th>' +
+      '<th data-col="customer_name" onclick="sortBy(this.dataset.col)">Customer ' + sortIcon('customer_name') + '</th>' +
+      '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon('notes') + '</th>' +
+      '<th data-col="due_date" onclick="sortBy(this.dataset.col)">Due Date ' + sortIcon('due_date') + '</th>' +
+      '<th data-col="ship_date" onclick="sortBy(this.dataset.col)">Ship Date ' + sortIcon('ship_date') + '</th>' +
+      '<th data-col="service_code" onclick="sortBy(this.dataset.col)">Service ' + sortIcon('service_code') + '</th>' +
+      '<th class="no-sort">Tracking #</th>' +
+      '<th data-col="shipping_cost" onclick="sortBy(this.dataset.col)">Ship Cost ' + sortIcon('shipping_cost') + '</th>' +
+      '</tr></thead><tbody>' + tBody + '</tbody></table>';
+  }
+
+  loadOrders();
+</script>
+</body>
+</html>"""
+
+
+@app.get("/completed", response_class=HTMLResponse)
+async def serve_completed():
+    return HTMLResponse(content=COMPLETED_HTML)
 
 
 @app.get("/api/orders")
