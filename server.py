@@ -15,7 +15,7 @@ import asyncio
 import base64
 import os
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 import httpx
@@ -416,18 +416,102 @@ async def _sync_all_orders() -> dict:
     return counts
 
 
+async def _reverse_tracking_sync(client: httpx.AsyncClient) -> int:
+    """
+    Standalone reverse sync: query ShipStation for recent shipments and write
+    tracking numbers back to GoMake internalNotes. Works on ALL GoMake orders
+    (open and closed) so it catches orders that have already shipped.
+    """
+    updated = 0
+    try:
+        # Step 1: Build a map of GoMake order number → {id, internalNotes}
+        # across ALL orders (no open/closed filter).
+        gomake_map: dict = {}
+        page = 1
+        while True:
+            resp = await client.post(
+                f"{GOMAKE_BASE}/sales-orders/list",
+                headers=GOMAKE_HEADERS,
+                json={"model": {"pageSize": PAGE_SIZE, "pageNumber": page}},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            orders = resp.json().get("data", {}).get("data", [])
+            if not orders:
+                break
+            for o in orders:
+                num = str(o.get("number") or o.get("orderNumber") or o.get("id") or "")
+                if num:
+                    gomake_map[num] = {
+                        "id":    o.get("id") or "",
+                        "notes": (o.get("internalNotes") or "").strip(),
+                    }
+            if len(orders) < PAGE_SIZE:
+                break
+            page += 1
+
+        # Step 2: Fetch recent ShipStation shipments (last 30 days).
+        since = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d")
+        ss_page = 1
+        while True:
+            r = await client.get(
+                f"{SS_BASE}/shipments",
+                headers=SS_HEADERS,
+                params={"shipDateStart": since, "page": ss_page, "pageSize": 100},
+                timeout=30,
+            )
+            r.raise_for_status()
+            shipments = r.json().get("shipments", [])
+            if not shipments:
+                break
+
+            for s in shipments:
+                tracking = (s.get("trackingNumber") or "").strip()
+                order_number = str(s.get("orderNumber") or "").strip()
+                if not tracking or not order_number:
+                    continue
+                gm = gomake_map.get(order_number)
+                if not gm or not gm["id"]:
+                    continue
+                if tracking in gm["notes"]:
+                    continue  # already written
+                tracking_info = {
+                    "tracking":  tracking,
+                    "carrier":   s.get("carrierCode") or "",
+                    "ship_date": (s.get("shipDate") or "")[:10],
+                    "cost":      s.get("shipmentCost"),
+                }
+                try:
+                    await _write_tracking_to_gomake(client, gm["id"], gm["notes"], tracking_info)
+                    updated += 1
+                except Exception:
+                    pass
+
+            if len(shipments) < 100:
+                break
+            ss_page += 1
+
+    except Exception:
+        pass
+    return updated
+
+
 async def run_sync():
     """Trigger a sync run, updating _sync_state."""
     if _sync_state["running"]:
         return {"status": "already_running"}
     _sync_state["running"] = True
     try:
-        counts = await _sync_all_orders()
+        async with httpx.AsyncClient() as client:
+            counts = await _sync_all_orders()
+            tracking_updated = await _reverse_tracking_sync(client)
+            counts["tracking_updated"] = counts.get("tracking_updated", 0) + tracking_updated
         _sync_state.update({
             "last_run":  datetime.utcnow().isoformat(),
             "last_ok":   counts["ok"],
             "last_skip": counts["skipped"],
             "last_err":  counts["error"],
+            "last_tracking": counts.get("tracking_updated", 0),
         })
         return counts
     finally:
