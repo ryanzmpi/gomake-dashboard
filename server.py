@@ -2774,12 +2774,14 @@ async def get_completed_orders():
                     if s.get("voided"):
                         continue
                     order_number = str(s.get("orderNumber") or "")
-                    gm = gomake_map.get(order_number, {})
+                    gm = gomake_map.get(order_number)
+                    if not gm:
+                        continue
                     results.append({
                         "order_number":   order_number,
                         "customer_name":  gm.get("customerName") or gm.get("contactName") or "",
                         "due_date":       str(gm.get("dueDate") or "")[:10],
-                        "notes":          gm.get("notes") or "",
+                        "notes":          gm.get("internalNotes") or gm.get("notes") or "",
                         "ship_date":      str(s.get("shipDate") or "")[:10],
                         "carrier_code":   s.get("carrierCode") or "",
                         "service_code":   s.get("serviceCode") or "",
