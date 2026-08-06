@@ -2935,23 +2935,33 @@ async def debug_shipments(order_number: str):
             if gomake_id or len(orders) < PAGE_SIZE:
                 break
 
-        put_result = None
+        probe_results = {}
         if gomake_id:
             test_note = (gomake_notes or "").strip()
             test_note = (test_note + "\nDEBUG_TEST").strip()
-            put_r = await client.put(
-                f"{GOMAKE_BASE}/sales-orders/{gomake_id}",
-                headers=GOMAKE_HEADERS,
-                json={"internalNotes": test_note},
-            )
-            put_result = {"status": put_r.status_code, "body": put_r.text[:500]}
+            body = {"internalNotes": test_note}
+            for method, path in [
+                ("PUT",   f"{GOMAKE_BASE}/sales-orders/{gomake_id}"),
+                ("PATCH", f"{GOMAKE_BASE}/sales-orders/{gomake_id}"),
+                ("POST",  f"{GOMAKE_BASE}/sales-orders/{gomake_id}"),
+                ("POST",  f"{GOMAKE_BASE}/sales-orders/update"),
+                ("POST",  f"{GOMAKE_BASE}/sales-orders/{gomake_id}/update"),
+                ("POST",  f"{GOMAKE_BASE}/sales-orders/{gomake_id}/internal-notes"),
+            ]:
+                try:
+                    r2 = await client.request(method, path, headers=GOMAKE_HEADERS, json=body)
+                    probe_results[f"{method} {path.replace(GOMAKE_BASE,'')}"] = {
+                        "status": r2.status_code, "body": r2.text[:300]
+                    }
+                except Exception as e:
+                    probe_results[f"{method} {path.replace(GOMAKE_BASE,'')}"] = {"error": str(e)}
 
         return JSONResponse(content={
             "order_number": order_number,
             "gomake_id": gomake_id,
             "gomake_current_notes": gomake_notes,
             "shipstation_shipments": ss_data,
-            "gomake_put_result": put_result,
+            "gomake_probe_results": probe_results,
         })
 
 
