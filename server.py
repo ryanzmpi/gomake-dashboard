@@ -3244,6 +3244,62 @@ async def debug_shipments(order_number: str):
         })
 
 
+@app.get("/api/debug/order/{order_number}")
+async def debug_order(order_number: str):
+    """Dump the full raw GoMake order detail for an order, useful for seeing what fields (weight, dimensions, etc.) are available."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        # Find the order in the list first to get its ID
+        gomake_order = None
+        for page_num in range(1, 20):
+            resp = await client.post(
+                f"{GOMAKE_BASE}/sales-orders/list",
+                headers=GOMAKE_HEADERS,
+                json={"model": {"pageSize": PAGE_SIZE, "pageNumber": page_num}},
+            )
+            orders = resp.json().get("data", {}).get("data", [])
+            if not orders:
+                break
+            for o in orders:
+                if str(o.get("number") or "") == order_number:
+                    gomake_order = o
+                    break
+            if gomake_order or len(orders) < PAGE_SIZE:
+                break
+
+        if not gomake_order:
+            raise HTTPException(status_code=404, detail=f"Order {order_number} not found in GoMake.")
+
+        gomake_id = gomake_order.get("id")
+
+        # Fetch full order detail
+        detail = None
+        detail_error = None
+        try:
+            r = await client.get(
+                f"{GOMAKE_BASE}/sales-orders/{gomake_id}",
+                headers=GOMAKE_HEADERS,
+            )
+            detail = r.json() if r.status_code == 200 else {"error": r.text, "status": r.status_code}
+        except Exception as e:
+            detail_error = str(e)
+
+        # Extract just the documentItems fields for easier inspection
+        items_summary = []
+        if detail and isinstance(detail, dict):
+            items = (detail.get("data") or detail).get("documentItems") or []
+            for item in items:
+                items_summary.append({k: v for k, v in item.items() if v not in (None, "", [], {})})
+
+        return JSONResponse(content={
+            "order_number":   order_number,
+            "gomake_id":      gomake_id,
+            "list_fields":    {k: v for k, v in gomake_order.items() if v not in (None, "", [], {})},
+            "detail_raw":     detail,
+            "detail_error":   detail_error,
+            "items_summary":  items_summary,
+        })
+
+
 @app.api_route("/api/sync", methods=["GET", "POST"])
 async def trigger_sync():
     """Manually trigger a GoMake → ShipStation sync."""
