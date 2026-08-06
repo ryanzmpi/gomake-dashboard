@@ -2941,12 +2941,17 @@ async def debug_shipments(order_number: str):
             test_note = (test_note + "\nDEBUG_TEST").strip()
             body = {"internalNotes": test_note}
             for method, path in [
-                ("PUT",   f"{GOMAKE_BASE}/sales-orders/{gomake_id}"),
-                ("PATCH", f"{GOMAKE_BASE}/sales-orders/{gomake_id}"),
-                ("POST",  f"{GOMAKE_BASE}/sales-orders/{gomake_id}"),
-                ("POST",  f"{GOMAKE_BASE}/sales-orders/update"),
-                ("POST",  f"{GOMAKE_BASE}/sales-orders/{gomake_id}/update"),
-                ("POST",  f"{GOMAKE_BASE}/sales-orders/{gomake_id}/internal-notes"),
+                ("POST",  f"{GOMAKE_BASE}/sales-orders/set-internal-notes"),
+                ("POST",  f"{GOMAKE_BASE}/sales-orders/save-internal-notes"),
+                ("POST",  f"{GOMAKE_BASE}/sales-orders/{gomake_id}/set-internal-notes"),
+                ("POST",  f"{GOMAKE_BASE}/sales-orders/{gomake_id}/note"),
+                ("POST",  f"{GOMAKE_BASE}/sales-orders/{gomake_id}/notes"),
+                ("POST",  f"{GOMAKE_BASE}/sales-orders/save"),
+                ("POST",  f"{GOMAKE_BASE}/documents/{gomake_id}"),
+                ("PUT",   f"{GOMAKE_BASE}/documents/{gomake_id}"),
+                ("POST",  f"{GOMAKE_BASE}/documents/update"),
+                ("POST",  f"{GOMAKE_BASE}/sales-orders/{order_number}"),
+                ("PUT",   f"{GOMAKE_BASE}/sales-orders/{order_number}"),
             ]:
                 try:
                     r2 = await client.request(method, path, headers=GOMAKE_HEADERS, json=body)
