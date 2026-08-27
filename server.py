@@ -871,7 +871,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
-    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil')) return {bg:'#8B5CF6', fg:'#fff'};
+    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil') || s.includes('mesh preparing') || st.includes('mesh preparing')) return {bg:'#8B5CF6', fg:'#fff'};
     if (s.includes('scoring') || st.includes('scoring'))              return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
@@ -1367,7 +1367,7 @@ PRESS_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
-    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil')) return {bg:'#8B5CF6', fg:'#fff'};
+    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil') || s.includes('mesh preparing') || st.includes('mesh preparing')) return {bg:'#8B5CF6', fg:'#fff'};
     if (s.includes('scoring') || st.includes('scoring'))              return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
@@ -1689,7 +1689,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
-    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil')) return {bg:'#8B5CF6', fg:'#fff'};
+    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil') || s.includes('mesh preparing') || st.includes('mesh preparing')) return {bg:'#8B5CF6', fg:'#fff'};
     if (s.includes('scoring') || st.includes('scoring'))              return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
@@ -2018,7 +2018,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
-    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil')) return {bg:'#8B5CF6', fg:'#fff'};
+    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil') || s.includes('mesh preparing') || st.includes('mesh preparing')) return {bg:'#8B5CF6', fg:'#fff'};
     if (s.includes('scoring') || st.includes('scoring'))              return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
@@ -2203,10 +2203,16 @@ SCREEN_PRINTING_HTML = """<!DOCTYPE html>
     return (jobStatuses || []).some(s => {
       const station = String(s.currentStation || '').toLowerCase();
       const status  = String(s.status || '').toLowerCase();
+      const machine = String(s.machineName || '').toLowerCase();
       return status.includes('exposure') ||
         station.includes('exposure') ||
         status.includes('stencil') ||
-        station.includes('stencil');
+        station.includes('stencil') ||
+        status.includes('mesh preparing') ||
+        station.includes('mesh preparing') ||
+        status.includes('film printing') ||
+        station.includes('film printing') ||
+        (machine.includes('screen printing') && (status.includes('printing') || station.includes('printing')));
     });
   }
 
@@ -2362,7 +2368,7 @@ SCREEN_PRINTING_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
-    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil')) return {bg:'#8B5CF6', fg:'#fff'};
+    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil') || s.includes('mesh preparing') || st.includes('mesh preparing')) return {bg:'#8B5CF6', fg:'#fff'};
     if (s.includes('scoring') || st.includes('scoring'))              return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
@@ -2697,7 +2703,7 @@ FINISHING_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
-    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil')) return {bg:'#8B5CF6', fg:'#fff'};
+    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil') || s.includes('mesh preparing') || st.includes('mesh preparing')) return {bg:'#8B5CF6', fg:'#fff'};
     if (s.includes('scoring') || st.includes('scoring'))              return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
@@ -3021,7 +3027,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
-    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil')) return {bg:'#8B5CF6', fg:'#fff'};
+    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil') || s.includes('mesh preparing') || st.includes('mesh preparing')) return {bg:'#8B5CF6', fg:'#fff'};
     if (s.includes('scoring') || st.includes('scoring'))              return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
