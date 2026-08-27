@@ -620,6 +620,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   <a href="/prepress">Prepress / Graphics</a>
   <a href="/press">Press</a>
   <a href="/wide-format">Wide Format</a>
+  <a href="/screen-printing">Screen Printing</a>
   <a href="/finishing">Finishing</a>
   <a href="/shipping">Shipping</a>
   <a href="/completed">Completed</a>
@@ -870,6 +871,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil')) return {bg:'#8B5CF6', fg:'#fff'};
     if (s.includes('scoring') || st.includes('scoring'))              return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
@@ -1144,6 +1146,7 @@ PRESS_HTML = """<!DOCTYPE html>
   <a href="/prepress">Prepress / Graphics</a>
   <a href="/press" class="active">Press</a>
   <a href="/wide-format">Wide Format</a>
+  <a href="/screen-printing">Screen Printing</a>
   <a href="/finishing">Finishing</a>
   <a href="/shipping">Shipping</a>
   <a href="/completed">Completed</a>
@@ -1364,6 +1367,7 @@ PRESS_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil')) return {bg:'#8B5CF6', fg:'#fff'};
     if (s.includes('scoring') || st.includes('scoring'))              return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
@@ -1474,6 +1478,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
   <a href="/prepress" class="active">Prepress / Graphics</a>
   <a href="/press">Press</a>
   <a href="/wide-format">Wide Format</a>
+  <a href="/screen-printing">Screen Printing</a>
   <a href="/finishing">Finishing</a>
   <a href="/shipping">Shipping</a>
   <a href="/completed">Completed</a>
@@ -1684,6 +1689,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil')) return {bg:'#8B5CF6', fg:'#fff'};
     if (s.includes('scoring') || st.includes('scoring'))              return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
@@ -1794,6 +1800,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
   <a href="/prepress">Prepress / Graphics</a>
   <a href="/press">Press</a>
   <a href="/wide-format" class="active">Wide Format</a>
+  <a href="/screen-printing">Screen Printing</a>
   <a href="/finishing">Finishing</a>
   <a href="/shipping">Shipping</a>
   <a href="/completed">Completed</a>
@@ -2011,6 +2018,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil')) return {bg:'#8B5CF6', fg:'#fff'};
     if (s.includes('scoring') || st.includes('scoring'))              return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
@@ -2074,6 +2082,335 @@ async def serve_prepress():
 @app.get("/wide-format", response_class=HTMLResponse)
 async def serve_wide_format():
     return HTMLResponse(content=WIDE_FORMAT_HTML)
+
+
+SCREEN_PRINTING_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Screen Printing Jobs</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a202c; min-height: 100vh; }
+    header { background: #22475A; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+    header .header-left { display: flex; align-items: center; gap: 20px; }
+    header img.logo { height: 70px; width: auto; }
+    header h1 { font-size: 36px; font-weight: 600; }
+    .status-bar { font-size: 22px; opacity: 0.85; text-align: right; }
+    nav { background: #1a3648; display: flex; gap: 4px; padding: 0 24px; }
+    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 23px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
+    nav a:hover { color: white; }
+    nav a.active { color: white; border-bottom-color: white; }
+    main { padding: 24px 28px; }
+    .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 20px 24px; }
+    .toolbar { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+    .toolbar-left { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+    .badge { background: #22475A; color: #fff; border-radius: 999px; padding: 2px 12px; font-size: 20px; font-weight: 700; }
+    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 20px; width: 240px; }
+    .field-sm { display: flex; flex-direction: column; gap: 4px; font-size: 18px; color: #6b7280; }
+    .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 10px; font-size: 18px; }
+    .btn-primary { background: #22475A; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-size: 20px; cursor: pointer; }
+    .btn-primary:hover { background: #1a3648; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    table { width: 100%; border-collapse: collapse; font-size: 22px; }
+    th { text-align: left; padding: 10px 12px; border-bottom: 2px solid #e5e7eb; color: #374151; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    th.no-sort { cursor: default; }
+    td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+    tr:hover td { background: #f9fafb; }
+    .order-num { font-weight: 700; color: #22475A; white-space: nowrap; }
+    .due-badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 20px; font-weight: 600; white-space: nowrap; }
+    .due-overdue { background: #fee2e2; color: #dc2626; }
+    .due-soon    { background: #fef3c7; color: #b45309; }
+    .due-ok      { background: #dcfce7; color: #15803d; }
+    .due-none    { background: #f3f4f6; color: #6b7280; }
+    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 25px; }
+    .state .icon { font-size: 29px; margin-bottom: 8px; }
+    .error-msg { color: #dc2626; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #22475A; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .job-status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 20px; font-weight: 600; }
+    .section-header td { font-size: 22px; font-weight: 700; padding: 10px 16px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: none; }
+    .section-overdue td { background: #fee2e2; color: #dc2626; }
+    .section-today   td { background: #fef3c7; color: #b45309; }
+    .section-future  td { background: #dcfce7; color: #15803d; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <img class="logo" src="/static/logo.png" alt="Logo" />
+    <h1>Orders Dashboard</h1>
+  </div>
+  <div class="status-bar" id="statusBar">Loading&hellip;</div>
+</header>
+<nav>
+  <a href="/">All Orders</a>
+  <a href="/prepress">Prepress / Graphics</a>
+  <a href="/press">Press</a>
+  <a href="/wide-format">Wide Format</a>
+  <a href="/screen-printing" class="active">Screen Printing</a>
+  <a href="/finishing">Finishing</a>
+  <a href="/shipping">Shipping</a>
+  <a href="/completed">Completed</a>
+</nav>
+<main>
+  <div class="card">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <strong style="font-size: 27px">Screen Printing Jobs <span class="badge" id="jobCount">0</span></strong>
+        <input class="search-box" type="search" id="searchBox" placeholder="Search&hellip;" oninput="renderTable()" />
+      </div>
+      <div class="toolbar-left">
+        <div class="field-sm">
+          <label for="refreshInterval">Auto-refresh</label>
+          <select id="refreshInterval" onchange="scheduleRefresh()">
+            <option value="0">Off</option>
+            <option value="60" selected>Every 1 min</option>
+            <option value="300">Every 5 min</option>
+            <option value="600">Every 10 min</option>
+            <option value="1800">Every 30 min</option>
+          </select>
+        </div>
+        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()" style="margin-top:18px">&#8635; Refresh</button>
+      </div>
+    </div>
+    <div id="tableContainer">
+      <div class="state"><span class="spinner"></span> Fetching orders&hellip;</div>
+    </div>
+  </div>
+</main>
+<script>
+  let screenPrintingJobs = [];
+  let sortCol = "due_date";
+  let sortAsc = true;
+  let refreshTimer = null;
+
+  async function fetchPage(page) {
+    const res = await fetch('/api/orders?page=' + page);
+    if (!res.ok) throw new Error((await res.json().catch(() => ({detail: res.statusText}))).detail);
+    return res.json();
+  }
+
+  function extractOrders(data) {
+    if (data && data.data && Array.isArray(data.data.data)) return data.data.data;
+    if (data && Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data)) return data;
+    return [];
+  }
+
+  function isScreenPrinting(jobStatuses) {
+    return (jobStatuses || []).some(s => {
+      const station = String(s.currentStation || '').toLowerCase();
+      const status  = String(s.status || '').toLowerCase();
+      return status.includes('exposure') ||
+        station.includes('exposure') ||
+        status.includes('stencil') ||
+        station.includes('stencil');
+    });
+  }
+
+  async function loadOrders(silent = false) {
+    if (!silent) setLoading(true);
+    else document.getElementById("statusBar").innerHTML = '&#8635; Refreshing&hellip;';
+    const newJobs = [];
+    const openOrders = [];
+    try {
+      let page = 0;
+      while (true) {
+        const data = await fetchPage(page);
+        const orders = extractOrders(data);
+        if (!orders.length) break;
+        const open = orders.filter(o =>
+          !String(o.statusTitleText || '').toLowerCase().includes('closed') &&
+          o.deliveryStatus !== 3
+        );
+        openOrders.push(...open);
+        if (orders.length < 100) break;
+        page++;
+      }
+
+      document.getElementById("statusBar").textContent = 'Loading job statuses (0/' + openOrders.length + ')...';
+
+      let loaded = 0;
+      await Promise.all(openOrders.map(async (order) => {
+        if (!order.id) return;
+        try {
+          const res = await fetch('/api/orders/' + order.id + '/jobs');
+          if (res.ok) {
+            const jobs = await res.json();
+            for (const job of jobs) {
+              if (isScreenPrinting(job.jobStatuses)) {
+                const rawDate = order.dueDate || order.due_date || order.deliveryDate || '';
+                const dueDate = String(rawDate).substring(0, 10);
+                newJobs.push({
+                  order_number: String(order.number || order.orderNumber || order.id || ''),
+                  due_date: dueDate,
+                  product_name: job.productName || '',
+                  quantity: job.quantity || '',
+                  notes: String(order.notes || '').trim(),
+                  jobStatuses: job.jobStatuses || []
+                });
+              }
+            }
+          }
+        } catch (e) { /* ignore */ }
+        loaded++;
+        document.getElementById("statusBar").textContent = 'Loading job statuses (' + loaded + '/' + openOrders.length + ')...';
+      }));
+
+      screenPrintingJobs = newJobs;
+      const now = new Date().toLocaleTimeString();
+      document.getElementById("statusBar").innerHTML = '&#10003; Updated ' + now;
+      renderTable();
+      scheduleRefresh();
+    } catch (err) {
+      if (!silent) document.getElementById("tableContainer").innerHTML = '<div class="state error-msg"><div class="icon">&#9888;</div>' + esc(err.message) + '</div>';
+      document.getElementById("statusBar").textContent = silent ? "Refresh failed" : "Error";
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }
+
+  function renderTable() {
+    const query = document.getElementById("searchBox").value.toLowerCase();
+    let rows = screenPrintingJobs.filter(r =>
+      r.order_number.toLowerCase().includes(query) ||
+      r.product_name.toLowerCase().includes(query) ||
+      r.due_date.toLowerCase().includes(query) ||
+      (r.notes || '').toLowerCase().includes(query)
+    );
+    rows.sort((a, b) => {
+      const va = a[sortCol] ?? '', vb = b[sortCol] ?? '';
+      const primary = sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      if (primary !== 0) return primary;
+      return String(a.notes ?? '').localeCompare(String(b.notes ?? ''));
+    });
+    document.getElementById("jobCount").textContent = rows.length;
+    if (!rows.length) {
+      document.getElementById("tableContainer").innerHTML = '<div class="state"><div class="icon">&#128269;</div>No jobs currently at Screen Printing.</div>';
+      return;
+    }
+
+    const todayPT = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Los_Angeles'}).format(new Date());
+    const today = new Date(todayPT + 'T00:00:00');
+    const soon = new Date(today); soon.setDate(soon.getDate() + 3);
+
+    function rowDate(r) {
+      if (!r.due_date) return null;
+      const p = r.due_date.split('-');
+      return new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
+    }
+
+    const overdue   = rows.filter(r => { const d = rowDate(r); return d && d < today; });
+    const todayRows = rows.filter(r => { const d = rowDate(r); return d && d.getTime() === today.getTime(); });
+    const future    = rows.filter(r => { const d = rowDate(r); return !d || d > today; });
+
+    function buildRow(r) {
+      let cls = "due-none", label = "&#8212;";
+      if (r.due_date) {
+        const parts = r.due_date.split('-');
+        const displayDate = parts[1] + '-' + parts[2];
+        label = displayDate;
+        const d = rowDate(r);
+        if (d && !isNaN(d)) {
+          if (d < today)      { cls = "due-overdue"; label = "&#9888; " + displayDate; }
+          else if (d <= soon) { cls = "due-soon"; }
+          else                { cls = "due-ok"; }
+        }
+      }
+      const badges = r.jobStatuses.map(function(s) {
+        const c = statusColor(s.status, s.currentStation, s.machineName);
+        const lbl = esc(s.status) + (s.currentStation ? ' @ ' + esc(s.currentStation) : '');
+        return '<span class="job-status-badge" style="background:' + c.bg + ';color:' + c.fg + '">' + lbl + '</span>';
+      }).join(' ');
+      return '<tr>' +
+        '<td class="order-num">' + esc(r.order_number) + '</td>' +
+        '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
+        '<td>' + esc(r.product_name) + '</td>' +
+        '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
+        '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes || '') + '</td>' +
+        '<td>' + (badges || '&#8212;') + '</td>' +
+        '</tr>';
+    }
+
+    function sectionHeader(cls, label, count) {
+      return '<tr class="section-header ' + cls + '"><td colspan="6">' + label + ' (' + count + ')</td></tr>';
+    }
+
+    let tBody = '';
+    if (overdue.length)   tBody += sectionHeader('section-overdue', '&#9888; Late / Past Due', overdue.length)   + overdue.map(buildRow).join('');
+    if (todayRows.length) tBody += sectionHeader('section-today',   '&#128197; Due Today',     todayRows.length) + todayRows.map(buildRow).join('');
+    if (future.length)    tBody += sectionHeader('section-future',  '&#128336; Upcoming',       future.length)    + future.map(buildRow).join('');
+
+    document.getElementById("tableContainer").innerHTML =
+      '<table><thead><tr>' +
+      '<th data-col="order_number" onclick="sortBy(this.dataset.col)">Order # ' + sortIcon("order_number") + '</th>' +
+      '<th data-col="due_date" onclick="sortBy(this.dataset.col)">Due Date ' + sortIcon("due_date") + '</th>' +
+      '<th data-col="product_name" onclick="sortBy(this.dataset.col)">Job Name ' + sortIcon("product_name") + '</th>' +
+      '<th data-col="quantity" onclick="sortBy(this.dataset.col)">Qty ' + sortIcon("quantity") + '</th>' +
+      '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
+      '<th class="no-sort">Status</th>' +
+      '</tr></thead><tbody>' + tBody + '</tbody></table>';
+  }
+
+  function statusColor(status, station, machine) {
+    const s = String(status || '').toLowerCase();
+    const st = String(station || '').toLowerCase();
+    const m = String(machine || '').toLowerCase();
+    if (s.includes('prepress') || st.includes('prepress') || s.includes('graphics') || st.includes('graphics')) return {bg:'#FFFF00', fg:'#1a202c'};
+    if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
+    if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil')) return {bg:'#8B5CF6', fg:'#fff'};
+    if (s.includes('scoring') || st.includes('scoring'))              return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('lamination') || st.includes('lamination'))       return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('packing') || st.includes('packing'))             return {bg:'#FA3BF0', fg:'#fff'};
+    if (st.includes('roll sheeter') || st.includes('fabric folding') || st.includes('rings') || m.includes('hand cutting')) return {bg:'#1BFC06', fg:'#1a202c'};
+    if (s.includes('wait'))                                   return {bg:'#f3f4f6', fg:'#6b7280'};
+    if (s.includes('progress')||s.includes('active')||s.includes('run')) return {bg:'#dbeafe', fg:'#1d4ed8'};
+    if (s.includes('done')||s.includes('complet')||s.includes('finish')) return {bg:'#dcfce7', fg:'#16a34a'};
+    if (s.includes('hold')||s.includes('pause'))              return {bg:'#fef3c7', fg:'#d97706'};
+    if (s.includes('cancel')||s.includes('error'))            return {bg:'#fee2e2', fg:'#dc2626'};
+    return {bg:'#f3f4f6', fg:'#6b7280'};
+  }
+
+  function sortBy(col) {
+    if (sortCol === col) { sortAsc = !sortAsc; } else { sortCol = col; sortAsc = true; }
+    renderTable();
+  }
+  function sortIcon(col) { return sortCol !== col ? "&#8597;" : (sortAsc ? "&#8593;" : "&#8595;"); }
+
+  function scheduleRefresh() {
+    clearTimeout(refreshTimer);
+    const interval = parseInt(document.getElementById("refreshInterval").value);
+    if (!interval) return;
+    refreshTimer = setTimeout(() => loadOrders(true), interval * 1000);
+  }
+
+  function setLoading(on) {
+    const btn = document.getElementById("refreshBtn");
+    btn.disabled = on;
+    btn.textContent = on ? "Loading…" : "↻ Refresh";
+    if (on) document.getElementById("tableContainer").innerHTML =
+      '<div class="state"><span class="spinner"></span> Fetching orders&hellip;</div>';
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  loadOrders();
+</script>
+</body>
+</html>"""
+
+
+@app.get("/screen-printing", response_class=HTMLResponse)
+async def serve_screen_printing():
+    return HTMLResponse(content=SCREEN_PRINTING_HTML)
 
 
 FINISHING_HTML = """<!DOCTYPE html>
@@ -2141,6 +2478,7 @@ FINISHING_HTML = """<!DOCTYPE html>
   <a href="/prepress">Prepress / Graphics</a>
   <a href="/press">Press</a>
   <a href="/wide-format">Wide Format</a>
+  <a href="/screen-printing">Screen Printing</a>
   <a href="/finishing" class="active">Finishing</a>
   <a href="/shipping">Shipping</a>
   <a href="/completed">Completed</a>
@@ -2359,6 +2697,7 @@ FINISHING_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil')) return {bg:'#8B5CF6', fg:'#fff'};
     if (s.includes('scoring') || st.includes('scoring'))              return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
@@ -2474,6 +2813,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
   <a href="/prepress">Prepress / Graphics</a>
   <a href="/press">Press</a>
   <a href="/wide-format">Wide Format</a>
+  <a href="/screen-printing">Screen Printing</a>
   <a href="/finishing">Finishing</a>
   <a href="/shipping" class="active">Shipping</a>
 </nav>
@@ -2681,6 +3021,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
     if (s.includes('printing') || st.includes('printing'))           return {bg:'#30C5FF', fg:'#fff'};
     if (s.includes('gathering') || st.includes('gathering'))         return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('saddle') || st.includes('saddle') || s.includes('booklet saddle') || st.includes('booklet saddle')) return {bg:'#FF793B', fg:'#fff'};
+    if (s.includes('exposure') || st.includes('exposure') || s.includes('stencil') || st.includes('stencil')) return {bg:'#8B5CF6', fg:'#fff'};
     if (s.includes('scoring') || st.includes('scoring'))              return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('cutting') || st.includes('cutting'))             return {bg:'#FF793B', fg:'#fff'};
     if (s.includes('folding') || st.includes('folding'))             return {bg:'#FF793B', fg:'#fff'};
@@ -2862,6 +3203,7 @@ COMPLETED_HTML = """<!DOCTYPE html>
   <a href="/prepress">Prepress / Graphics</a>
   <a href="/press">Press</a>
   <a href="/wide-format">Wide Format</a>
+  <a href="/screen-printing">Screen Printing</a>
   <a href="/finishing">Finishing</a>
   <a href="/shipping">Shipping</a>
   <a href="/completed" class="active">Completed</a>
