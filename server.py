@@ -1203,7 +1203,7 @@ PRESS_HTML = """<!DOCTYPE html>
     );
   }
 
-  const EXCLUDED_MACHINES = ['hp latex', 'mimaki'];
+  const EXCLUDED_MACHINES = ['hp latex', 'mimaki', 'screen printing'];
   function isExcludedMachine(jobStatuses) {
     return (jobStatuses || []).some(s =>
       EXCLUDED_MACHINES.some(m => String(s.machineName || '').toLowerCase().includes(m))
