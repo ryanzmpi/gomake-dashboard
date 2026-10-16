@@ -1056,6 +1056,9 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(_sync_loop())
     else:
         print("⚠️  SHIPSTATION_API_KEY / SHIPSTATION_API_SECRET not set — sync disabled\n")
+    if CLIENT_ID and CLIENT_SECRET:
+        asyncio.create_task(_cache_warm_loop())
+        print(f"✓ Shared GoMake cache on — refresh every {CACHE_REFRESH} sec\n")
     yield
 
 
@@ -3355,28 +3358,56 @@ async def serve_completed():
     return HTMLResponse(content=COMPLETED_HTML)
 
 
-@app.get("/api/orders")
-async def get_orders(page: int = Query(0, ge=0)):
-    """Proxy a page of orders from GoMake (page is 0-based)."""
-    if not CLIENT_ID or not CLIENT_SECRET:
-        raise HTTPException(status_code=500, detail="Server credentials not configured.")
+# ── Shared GoMake data cache ──────────────────────────────────────────────────
+# All dashboard pages/screens read from this in-memory cache instead of calling
+# GoMake directly. A background task refreshes it every CACHE_REFRESH seconds, and
+# concurrent requests for the same key are coalesced into a single API call.
 
-    url = f"{GOMAKE_BASE}/sales-orders/list"
-    headers = {
+CACHE_REFRESH     = 150   # seconds between background refreshes (2.5 min)
+CACHE_TTL         = 180   # a cached entry older than this is refetched on demand
+WARM_CONCURRENCY  = 5     # max simultaneous GoMake calls from the background refresh
+
+_cache: dict = {}         # key -> {"data": ..., "ts": epoch seconds}
+_cache_locks: dict = {}   # key -> asyncio.Lock
+_cache_state = {"last_warm": None, "last_warm_secs": None, "last_warm_orders": 0, "last_error": None}
+
+
+def _gomake_headers() -> dict:
+    return {
         "X-Client-Id": CLIENT_ID,
         "X-Client-Secret": CLIENT_SECRET,
         "Content-Type": "application/json",
     }
-    body = {
-        "model": {
-            "pageSize": PAGE_SIZE,
-            "pageNumber": page + 1,
-        }
-    }
 
+
+async def _cached(key: str, fetch, force: bool = False):
+    """Return cached data for key, refetching (once, even under concurrency) if stale.
+    If a refetch fails and older data exists, the stale data is served instead."""
+    import time
+    entry = _cache.get(key)
+    if entry and not force and time.time() - entry["ts"] < CACHE_TTL:
+        return entry["data"]
+    lock = _cache_locks.setdefault(key, asyncio.Lock())
+    async with lock:
+        entry = _cache.get(key)
+        if entry and time.time() - entry["ts"] < (5 if force else CACHE_TTL):
+            return entry["data"]   # another request just refreshed it
+        try:
+            data = await fetch()
+        except Exception:
+            if entry:
+                return entry["data"]   # serve stale rather than fail
+            raise
+        _cache[key] = {"data": data, "ts": time.time()}
+        return data
+
+
+async def _fetch_orders_page(page: int):
+    url = f"{GOMAKE_BASE}/sales-orders/list"
+    body = {"model": {"pageSize": PAGE_SIZE, "pageNumber": page + 1}}
     async with httpx.AsyncClient(timeout=30) as client:
         try:
-            resp = await client.post(url, headers=headers, json=body)
+            resp = await client.post(url, headers=_gomake_headers(), json=body)
             resp.raise_for_status()
             return resp.json()
         except httpx.HTTPStatusError as e:
@@ -3386,18 +3417,8 @@ async def get_orders(page: int = Query(0, ge=0)):
             raise HTTPException(status_code=502, detail=f"Could not reach GoMake: {e}")
 
 
-@app.get("/api/orders/{order_id}/jobs")
-async def get_order_jobs(order_id: str):
-    """Fetch all job statuses for an order's document items."""
-    if not CLIENT_ID or not CLIENT_SECRET:
-        raise HTTPException(status_code=500, detail="Server credentials not configured.")
-
-    headers = {
-        "X-Client-Id": CLIENT_ID,
-        "X-Client-Secret": CLIENT_SECRET,
-        "Content-Type": "application/json",
-    }
-
+async def _fetch_order_jobs(order_id: str):
+    headers = _gomake_headers()
     async with httpx.AsyncClient(timeout=30) as client:
         # Step 1: get order detail to find documentItems
         try:
@@ -3433,6 +3454,76 @@ async def get_order_jobs(order_id: str):
 
         results = await asyncio.gather(*[fetch_job_status(item) for item in document_items])
         return [r for r in results if (r.get("productName") or "").strip().lower() != "delivery"]
+
+
+async def _warm_cache():
+    """Refresh every orders page, then job statuses for every open order."""
+    import time
+    t0 = time.time()
+    page, open_ids = 0, []
+    while True:
+        data = await _cached(f"orders:{page}", lambda p=page: _fetch_orders_page(p), force=True)
+        d = data.get("data") if isinstance(data, dict) else None
+        orders = d.get("data", []) if isinstance(d, dict) else (d or [])
+        if not orders:
+            break
+        for o in orders:
+            if ("closed" not in str(o.get("statusTitleText", "")).lower()
+                    and o.get("deliveryStatus") != 3 and o.get("id")):
+                open_ids.append(str(o["id"]))
+        if len(orders) < PAGE_SIZE:
+            break
+        page += 1
+
+    sem = asyncio.Semaphore(WARM_CONCURRENCY)
+
+    async def warm_one(oid):
+        async with sem:
+            try:
+                await _cached(f"jobs:{oid}", lambda: _fetch_order_jobs(oid), force=True)
+            except Exception:
+                pass
+
+    await asyncio.gather(*[warm_one(oid) for oid in open_ids])
+    _cache_state.update({
+        "last_warm": datetime.utcnow().isoformat(),
+        "last_warm_secs": round(time.time() - t0, 1),
+        "last_warm_orders": len(open_ids),
+        "last_error": None,
+    })
+
+
+async def _cache_warm_loop():
+    """Background task: keep the shared cache fresh so users never hit GoMake directly."""
+    while True:
+        try:
+            await _warm_cache()
+        except Exception as e:
+            _cache_state["last_error"] = str(e)
+            print(f"[cache] refresh error: {e}")
+        await asyncio.sleep(CACHE_REFRESH)
+
+
+@app.get("/api/orders")
+async def get_orders(page: int = Query(0, ge=0)):
+    """A page of orders from GoMake (page is 0-based), served from the shared cache."""
+    if not CLIENT_ID or not CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="Server credentials not configured.")
+    return await _cached(f"orders:{page}", lambda: _fetch_orders_page(page))
+
+
+@app.get("/api/orders/{order_id}/jobs")
+async def get_order_jobs(order_id: str):
+    """Job statuses for an order's document items, served from the shared cache."""
+    if not CLIENT_ID or not CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="Server credentials not configured.")
+    return await _cached(f"jobs:{order_id}", lambda: _fetch_order_jobs(order_id))
+
+
+@app.get("/api/cache/status")
+async def cache_status():
+    """When the shared cache was last refreshed (handy for checking it's working)."""
+    return {**_cache_state, "entries": len(_cache), "refresh_every_secs": CACHE_REFRESH}
 
 
 @app.get("/api/debug/order/{order_number}")
