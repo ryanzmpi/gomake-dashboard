@@ -633,7 +633,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     let dueDate = String(rawDate).substring(0, 10);
     const worksNames = String(order.worksNames || "").replace(/,\\s*$/, "").trim();
     const notes = String(order.notes || "").trim();
-    return { id: orderId, order_number: String(orderNumber), due_date: dueDate, works_names: worksNames, notes: notes, jobStatuses: null };
+    return { id: orderId, order_number: String(orderNumber), due_date: dueDate, works_names: worksNames, notes: notes, csr: String(order.csr || ''), jobStatuses: null };
   }
 
   async function loadOrders(silent = false) {
@@ -868,12 +868,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.works_names) + '</td>' +
         '<td style="white-space:pre-line;color:var(--text-2)">' + notesHtml(r) + '</td>' +
+        '<td>' + esc(r.csr || '') + '</td>' +
         '<td>' + renderJobStatuses(r.jobStatuses) + '</td>' +
         '</tr>';
     }
 
     function sectionHeader(cls, label, count) {
-      return '<tr class="section-header ' + cls + '"><td colspan="5">' + label + ' (' + count + ')</td></tr>';
+      return '<tr class="section-header ' + cls + '"><td colspan="6">' + label + ' (' + count + ')</td></tr>';
     }
 
     let tBody = '';
@@ -886,6 +887,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       '<th data-col="due_date" onclick="sortBy(this.dataset.col)">Due Date ' + sortIcon("due_date") + '</th>' +
       '<th data-col="works_names" onclick="sortBy(this.dataset.col)">Jobs ' + sortIcon("works_names") + '</th>' +
       '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
+      '<th data-col="csr" onclick="sortBy(this.dataset.col)">CSR ' + sortIcon("csr") + '</th>' +
       '<th class="no-sort">Job Status</th>' +
       '</tr></thead><tbody>' + tBody + '</tbody></table>' +
       '<div class="legend">&#127002; On time &nbsp; &#127601; Due within 3 days &nbsp; &#128308; Overdue &nbsp; &#11036; No date</div>';
@@ -1138,6 +1140,7 @@ PRESS_HTML = """<!DOCTYPE html>
                   product_name: job.productName || '',
                   quantity: job.quantity || '',
                   notes: String(order.notes || '').trim(),
+                  csr: String(order.csr || ''),
                   jobStatuses: job.jobStatuses || []
                 });
               }
@@ -1221,12 +1224,13 @@ PRESS_HTML = """<!DOCTYPE html>
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
         '<td>' + esc(machine) + '</td>' +
         '<td style="white-space:pre-line;color:var(--text-2)">' + notesHtml(r) + '</td>' +
+        '<td>' + esc(r.csr || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
 
     function sectionHeader(cls, label, count) {
-      return '<tr class="section-header ' + cls + '"><td colspan="7">' + label + ' (' + count + ')</td></tr>';
+      return '<tr class="section-header ' + cls + '"><td colspan="8">' + label + ' (' + count + ')</td></tr>';
     }
 
     let tBody = '';
@@ -1242,6 +1246,7 @@ PRESS_HTML = """<!DOCTYPE html>
       '<th data-col="quantity" onclick="sortBy(this.dataset.col)">Qty ' + sortIcon("quantity") + '</th>' +
       '<th class="no-sort">Press</th>' +
       '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
+      '<th data-col="csr" onclick="sortBy(this.dataset.col)">CSR ' + sortIcon("csr") + '</th>' +
       '<th class="no-sort">Status</th>' +
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
@@ -1421,6 +1426,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
                   product_name: job.productName || '',
                   quantity: job.quantity || '',
                   notes: String(order.notes || '').trim(),
+                  csr: String(order.csr || ''),
                   jobStatuses: job.jobStatuses || []
                 });
               }
@@ -1502,12 +1508,13 @@ PREPRESS_HTML = """<!DOCTYPE html>
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
         '<td style="white-space:pre-line;color:var(--text-2)">' + notesHtml(r) + '</td>' +
+        '<td>' + esc(r.csr || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
 
     function sectionHeader(cls, label, count) {
-      return '<tr class="section-header ' + cls + '"><td colspan="6">' + label + ' (' + count + ')</td></tr>';
+      return '<tr class="section-header ' + cls + '"><td colspan="7">' + label + ' (' + count + ')</td></tr>';
     }
 
     let tBody = '';
@@ -1522,6 +1529,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
       '<th data-col="product_name" onclick="sortBy(this.dataset.col)">Job Name ' + sortIcon("product_name") + '</th>' +
       '<th data-col="quantity" onclick="sortBy(this.dataset.col)">Qty ' + sortIcon("quantity") + '</th>' +
       '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
+      '<th data-col="csr" onclick="sortBy(this.dataset.col)">CSR ' + sortIcon("csr") + '</th>' +
       '<th class="no-sort">Status</th>' +
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
@@ -1705,6 +1713,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
                   product_name: job.productName || '',
                   quantity: job.quantity || '',
                   notes: String(order.notes || '').trim(),
+                  csr: String(order.csr || ''),
                   jobStatuses: job.jobStatuses || []
                 });
               }
@@ -1788,12 +1797,13 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
         '<td>' + esc(machine) + '</td>' +
         '<td style="white-space:pre-line;color:var(--text-2)">' + notesHtml(r) + '</td>' +
+        '<td>' + esc(r.csr || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
 
     function sectionHeader(cls, label, count) {
-      return '<tr class="section-header ' + cls + '"><td colspan="7">' + label + ' (' + count + ')</td></tr>';
+      return '<tr class="section-header ' + cls + '"><td colspan="8">' + label + ' (' + count + ')</td></tr>';
     }
 
     let tBody = '';
@@ -1809,6 +1819,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
       '<th data-col="quantity" onclick="sortBy(this.dataset.col)">Qty ' + sortIcon("quantity") + '</th>' +
       '<th class="no-sort">Device</th>' +
       '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
+      '<th data-col="csr" onclick="sortBy(this.dataset.col)">CSR ' + sortIcon("csr") + '</th>' +
       '<th class="no-sort">Status</th>' +
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
@@ -2268,6 +2279,7 @@ SCREEN_PRINTING_HTML = """<!DOCTYPE html>
                   product_name: job.productName || '',
                   quantity: job.quantity || '',
                   notes: String(order.notes || '').trim(),
+                  csr: String(order.csr || ''),
                   jobStatuses: job.jobStatuses || []
                 });
               }
@@ -2349,12 +2361,13 @@ SCREEN_PRINTING_HTML = """<!DOCTYPE html>
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
         '<td style="white-space:pre-line;color:var(--text-2)">' + notesHtml(r) + '</td>' +
+        '<td>' + esc(r.csr || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
 
     function sectionHeader(cls, label, count) {
-      return '<tr class="section-header ' + cls + '"><td colspan="6">' + label + ' (' + count + ')</td></tr>';
+      return '<tr class="section-header ' + cls + '"><td colspan="7">' + label + ' (' + count + ')</td></tr>';
     }
 
     let tBody = '';
@@ -2369,6 +2382,7 @@ SCREEN_PRINTING_HTML = """<!DOCTYPE html>
       '<th data-col="product_name" onclick="sortBy(this.dataset.col)">Job Name ' + sortIcon("product_name") + '</th>' +
       '<th data-col="quantity" onclick="sortBy(this.dataset.col)">Qty ' + sortIcon("quantity") + '</th>' +
       '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
+      '<th data-col="csr" onclick="sortBy(this.dataset.col)">CSR ' + sortIcon("csr") + '</th>' +
       '<th class="no-sort">Status</th>' +
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
@@ -2561,6 +2575,7 @@ FINISHING_HTML = """<!DOCTYPE html>
                   product_name: job.productName || '',
                   quantity: job.quantity || '',
                   notes: String(order.notes || '').trim(),
+                  csr: String(order.csr || ''),
                   jobStatuses: job.jobStatuses || []
                 });
               }
@@ -2642,12 +2657,13 @@ FINISHING_HTML = """<!DOCTYPE html>
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
         '<td style="white-space:pre-line;color:var(--text-2)">' + notesHtml(r) + '</td>' +
+        '<td>' + esc(r.csr || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
 
     function sectionHeader(cls, label, count) {
-      return '<tr class="section-header ' + cls + '"><td colspan="6">' + label + ' (' + count + ')</td></tr>';
+      return '<tr class="section-header ' + cls + '"><td colspan="7">' + label + ' (' + count + ')</td></tr>';
     }
 
     let tBody = '';
@@ -2662,6 +2678,7 @@ FINISHING_HTML = """<!DOCTYPE html>
       '<th data-col="product_name" onclick="sortBy(this.dataset.col)">Job Name ' + sortIcon("product_name") + '</th>' +
       '<th data-col="quantity" onclick="sortBy(this.dataset.col)">Qty ' + sortIcon("quantity") + '</th>' +
       '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
+      '<th data-col="csr" onclick="sortBy(this.dataset.col)">CSR ' + sortIcon("csr") + '</th>' +
       '<th class="no-sort">Status</th>' +
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
@@ -2843,6 +2860,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
                   product_name: job.productName || '',
                   quantity: job.quantity || '',
                   notes: String(order.notes || '').trim(),
+                  csr: String(order.csr || ''),
                   jobStatuses: job.jobStatuses || []
                 });
               }
@@ -2924,12 +2942,13 @@ SHIPPING_HTML = """<!DOCTYPE html>
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
         '<td style="white-space:pre-line;color:var(--text-2)">' + notesHtml(r) + '</td>' +
+        '<td>' + esc(r.csr || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
 
     function sectionHeader(cls, label, count) {
-      return '<tr class="section-header ' + cls + '"><td colspan="6">' + label + ' (' + count + ')</td></tr>';
+      return '<tr class="section-header ' + cls + '"><td colspan="7">' + label + ' (' + count + ')</td></tr>';
     }
 
     let tBody = '';
@@ -2944,6 +2963,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
       '<th data-col="product_name" onclick="sortBy(this.dataset.col)">Job Name ' + sortIcon("product_name") + '</th>' +
       '<th data-col="quantity" onclick="sortBy(this.dataset.col)">Qty ' + sortIcon("quantity") + '</th>' +
       '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon("notes") + '</th>' +
+      '<th data-col="csr" onclick="sortBy(this.dataset.col)">CSR ' + sortIcon("csr") + '</th>' +
       '<th class="no-sort">Status</th>' +
       '</tr></thead><tbody>' + tBody + '</tbody></table>';
   }
@@ -3067,6 +3087,7 @@ async def get_completed_orders():
                         "customer_name":  gm.get("customerName") or gm.get("contactName") or "",
                         "due_date":       str(gm.get("dueDate") or "")[:10],
                         "notes":          gm.get("internalNotes") or gm.get("notes") or "",
+                        "csr":            ((gm.get("agent") or {}).get("firstname") or _AGENT_NAMES.get(gm.get("agentId"), "") or "").strip(),
                         "ship_date":      str(s.get("shipDate") or "")[:10],
                         "carrier_code":   s.get("carrierCode") or "",
                         "service_code":   s.get("serviceCode") or "",
@@ -3213,6 +3234,7 @@ COMPLETED_HTML = """<!DOCTYPE html>
         '<td class="order-num">' + esc(r.order_number) + '</td>' +
         '<td>' + esc(r.customer_name) + '</td>' +
         '<td>' + notesHtml(r) + '</td>' +
+        '<td>' + esc(r.csr || '') + '</td>' +
         '<td>' + formatDate(r.due_date) + '</td>' +
         '<td>' + formatDate(r.ship_date) + '</td>' +
         '<td>' + esc(formatService(r.carrier_code, r.service_code)) + '</td>' +
@@ -3225,6 +3247,7 @@ COMPLETED_HTML = """<!DOCTYPE html>
       '<th data-col="order_number" onclick="sortBy(this.dataset.col)">Order # ' + sortIcon('order_number') + '</th>' +
       '<th data-col="customer_name" onclick="sortBy(this.dataset.col)">Customer ' + sortIcon('customer_name') + '</th>' +
       '<th data-col="notes" onclick="sortBy(this.dataset.col)">Notes ' + sortIcon('notes') + '</th>' +
+      '<th data-col="csr" onclick="sortBy(this.dataset.col)">CSR ' + sortIcon('csr') + '</th>' +
       '<th data-col="due_date" onclick="sortBy(this.dataset.col)">Due Date ' + sortIcon('due_date') + '</th>' +
       '<th data-col="ship_date" onclick="sortBy(this.dataset.col)">Ship Date ' + sortIcon('ship_date') + '</th>' +
       '<th data-col="service_code" onclick="sortBy(this.dataset.col)">Service ' + sortIcon('service_code') + '</th>' +
@@ -3295,12 +3318,46 @@ async def _fetch_orders_page(page: int):
         try:
             resp = await client.post(url, headers=_gomake_headers(), json=body)
             resp.raise_for_status()
-            return resp.json()
+            data = resp.json()
+            await _attach_csr(client, data)
+            return data
         except httpx.HTTPStatusError as e:
             raise HTTPException(status_code=e.response.status_code,
                                 detail=f"GoMake API error: {e.response.text}")
         except httpx.RequestError as e:
             raise HTTPException(status_code=502, detail=f"Could not reach GoMake: {e}")
+
+
+_AGENT_NAMES: dict = {}   # GoMake agentId -> first name (the order's Sales Representative)
+
+
+async def _attach_csr(client, data):
+    """Add a 'csr' field (sales rep's first name) to every order in a list response."""
+    try:
+        d = data.get("data") if isinstance(data, dict) else None
+        orders = d.get("data", []) if isinstance(d, dict) else (d or [])
+        # Learn names already present on the list items
+        for o in orders:
+            a = o.get("agent")
+            if o.get("agentId") and isinstance(a, dict) and a.get("firstname"):
+                _AGENT_NAMES[o["agentId"]] = str(a["firstname"]).strip()
+        # Look up any rep we haven't seen yet (one order detail per rep, then remembered)
+        for o in orders:
+            aid = o.get("agentId")
+            if aid and aid not in _AGENT_NAMES and o.get("id"):
+                try:
+                    r = await client.get(f"{GOMAKE_BASE}/sales-orders/{o['id']}", headers=_gomake_headers())
+                    r.raise_for_status()
+                    ag = (r.json().get("data") or {}).get("agent") or {}
+                    _AGENT_NAMES[aid] = str(ag.get("firstname") or "").strip()
+                except Exception:
+                    pass
+        for o in orders:
+            a = o.get("agent")
+            o["csr"] = (str(a.get("firstname")).strip() if isinstance(a, dict) and a.get("firstname")
+                        else _AGENT_NAMES.get(o.get("agentId"), ""))
+    except Exception as e:
+        print(f"[csr] could not attach sales reps: {e}")
 
 
 async def _fetch_order_jobs(order_id: str):
