@@ -21,7 +21,7 @@ from typing import Optional
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
@@ -534,78 +534,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Orders Dashboard</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a202c; min-height: 100vh; }
-    header { background: #22475A; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
-    header .header-left { display: flex; align-items: center; gap: 20px; }
-    header img.logo { height: 70px; width: auto; }
-    header h1 { font-size: 36px; font-weight: 600; }
-    .status-bar { font-size: 22px; opacity: 0.85; text-align: right; }
-    nav { background: #1a3648; display: flex; gap: 4px; padding: 0 24px; }
-    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 23px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
-    nav a:hover { color: white; }
-    nav a.active { color: white; border-bottom-color: #E8572A; }
-    main { width: 100%; margin: 32px auto; padding: 0 24px; box-sizing: border-box; }
-    .card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 24px; }
-    .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; justify-content: space-between; }
-    .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .badge { background: #ede9fe; color: #22475A; font-size: 22px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
-    .field-sm { display: flex; flex-direction: column; }
-    .field-sm label { font-size: 22px; font-weight: 600; color: #4a5568; margin-bottom: 4px; }
-    .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 23px; background: white; outline: none; }
-    button { padding: 8px 18px; border-radius: 6px; font-size: 23px; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s, opacity 0.2s; }
-    .btn-primary { background: #22475A; color: white; }
-    .btn-primary:hover { background: #1a3648; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-secondary { background: #e5e7eb; color: #374151; }
-    .btn-secondary:hover { background: #d1d5db; }
-    .btn-green { background: #16a34a; color: white; }
-    .btn-green:hover { background: #15803d; }
-    .btn-green:disabled { opacity: 0.5; cursor: not-allowed; }
-    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 23px; width: 220px; outline: none; }
-    .search-box:focus { border-color: #22475A; }
-    table { width: 100%; border-collapse: collapse; }
-    thead th { text-align: left; font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; padding: 10px 16px; border-bottom: 2px solid #e5e7eb; cursor: pointer; user-select: none; }
-    thead th:hover { color: #22475A; }
-    thead th.no-sort { cursor: default; }
-    thead th.no-sort:hover { color: #6b7280; }
-    .section-header td { font-size: 22px; font-weight: 700; padding: 10px 16px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: none; }
-    .section-overdue  td { background: #fee2e2; color: #dc2626; }
-    .section-today    td { background: #fef3c7; color: #b45309; }
-    .section-future   td { background: #dcfce7; color: #15803d; }
-    tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.1s; }
-    tbody tr:hover { background: #f8faff; }
-    tbody td { padding: 12px 16px; font-size: 25px; vertical-align: top; }
-    .order-num { font-weight: 600; color: #22475A; font-family: monospace; }
-    .due-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 22px; font-weight: 600; }
-    .due-overdue { background: #fee2e2; color: #dc2626; }
-    .due-soon    { background: #fef3c7; color: #d97706; }
-    .due-ok      { background: #dcfce7; color: #16a34a; }
-    .due-none    { background: #f3f4f6; color: #6b7280; }
-    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 25px; }
-    .state .icon { font-size: 29px; margin-bottom: 8px; }
-    .error-msg { color: #dc2626; }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #22475A; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .legend { margin-top: 14px; font-size: 22px; color: #9ca3af; padding: 0 4px; }
-    .summary { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
-    .stat-card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 20px 28px; flex: 1; min-width: 200px; border-top: 4px solid #e5e7eb; }
-    .stat-card.created { border-top-color: #3b82f6; }
-    .stat-card.due { border-top-color: #d97706; }
-    .stat-card.done { border-top-color: #16a34a; }
-    .stat-label { font-size: 22px; color: #6b7280; font-weight: 600; margin-bottom: 6px; }
-    .stat-value { font-size: 43px; font-weight: 700; color: #1a202c; }
-    .stat-card.created .stat-value { color: #3b82f6; }
-    .stat-card.due .stat-value { color: #d97706; }
-    .stat-card.done .stat-value { color: #16a34a; }
-    .stat-sub { font-size: 22px; color: #6b7280; margin-top: 4px; font-weight: 600; }
-    .job-item { margin-bottom: 6px; }
-    .job-item:last-child { margin-bottom: 0; }
-    .job-item strong { display: block; font-size: 22px; color: #1a202c; margin-bottom: 3px; }
-    .job-status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 20px; font-weight: 600; margin-right: 4px; margin-bottom: 2px; }
-    .status-loading { color: #9ca3af; font-size: 20px; font-style: italic; }
-  </style>
+  <script>(function(){try{var q=new URLSearchParams(location.search).get('theme');if(q==='auto'){localStorage.removeItem('theme')}else if(q==='dark'||q==='light'){localStorage.setItem('theme',q)}var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
+  <link rel="stylesheet" href="/app.css?v=__V__" />
+  <style>:root { --td: 25px; }</style>
 </head>
 <body>
 <header>
@@ -646,7 +577,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   <div class="card">
     <div class="toolbar">
       <div class="toolbar-left">
-        <strong style="font-size: 27px">Sales Orders <span class="badge" id="orderCount">0</span></strong>
+        <strong>Sales Orders <span class="badge" id="orderCount">0</span></strong>
         <input class="search-box" type="search" id="searchBox" placeholder="Search orders&hellip;" oninput="renderTable()" />
       </div>
       <div class="toolbar-left">
@@ -660,10 +591,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             <option value="1800">Every 30 min</option>
           </select>
         </div>
-        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()" style="margin-top:18px">&#8635; Refresh</button>
-        <button class="btn-secondary" onclick="downloadCSV()" style="margin-top:18px">&#8595; CSV</button>
-        <button class="btn-green" id="syncBtn" onclick="syncShipStation()" style="margin-top:18px">&#8644; Sync SS</button>
-        <span id="syncStatus" style="font-size:20px;color:#6b7280;margin-top:18px"></span>
+        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()">&#8635; Refresh</button>
+        <button class="btn-secondary" onclick="downloadCSV()">&#8595; CSV</button>
+        <button class="btn-green" id="syncBtn" onclick="syncShipStation()">&#8644; Sync SS</button>
+        <span id="syncStatus" class="sync-status"></span>
       </div>
     </div>
     <div id="tableContainer">
@@ -852,14 +783,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
   function renderJobStatuses(jobStatuses) {
     if (jobStatuses === null) return '<span class="status-loading">Loading&hellip;</span>';
-    if (!jobStatuses.length) return '<span style="color:#9ca3af">&#8212;</span>';
+    if (!jobStatuses.length) return '<span style="color:var(--muted)">&#8212;</span>';
     return jobStatuses.map(function(job) {
       const badges = (job.jobStatuses || []).map(function(s) {
         const c = statusColor(s.status, s.currentStation, s.machineName);
         const label = esc(s.status) + (s.currentStation ? ' @ ' + esc(s.currentStation) : '');
         return '<span class="job-status-badge" style="background:' + c.bg + ';color:' + c.fg + '">' + label + '</span>';
       }).join('');
-      return '<div class="job-item"><strong>' + esc(job.productName || '') + (job.quantity ? ' &times;' + job.quantity : '') + '</strong>' + (badges || '<span style="color:#9ca3af">no status</span>') + '</div>';
+      return '<div class="job-item"><strong>' + esc(job.productName || '') + (job.quantity ? ' &times;' + job.quantity : '') + '</strong>' + (badges || '<span style="color:var(--muted)">no status</span>') + '</div>';
     }).join('');
   }
 
@@ -936,7 +867,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         '<td class="order-num">' + esc(r.order_number) + '</td>' +
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.works_names) + '</td>' +
-        '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes) + '</td>' +
+        '<td style="white-space:pre-line;color:var(--text-2)">' + esc(r.notes) + '</td>' +
         '<td>' + renderJobStatuses(r.jobStatuses) + '</td>' +
         '</tr>';
     }
@@ -1085,57 +1016,9 @@ PRESS_HTML = """<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Press Dashboard</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a202c; min-height: 100vh; }
-    header { background: #22475A; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
-    header .header-left { display: flex; align-items: center; gap: 20px; }
-    header img.logo { height: 70px; width: auto; }
-    header h1 { font-size: 36px; font-weight: 600; }
-    .status-bar { font-size: 22px; opacity: 0.85; text-align: right; }
-    nav { background: #1a3648; display: flex; gap: 4px; padding: 0 24px; }
-    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 23px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
-    nav a:hover { color: white; }
-    nav a.active { color: white; border-bottom-color: #E8572A; }
-    main { width: 100%; margin: 32px auto; padding: 0 24px; box-sizing: border-box; }
-    .card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 24px; }
-    .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; justify-content: space-between; }
-    .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .badge { background: #ede9fe; color: #22475A; font-size: 22px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
-    .field-sm { display: flex; flex-direction: column; }
-    .field-sm label { font-size: 22px; font-weight: 600; color: #4a5568; margin-bottom: 4px; }
-    .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 23px; background: white; outline: none; }
-    button { padding: 8px 18px; border-radius: 6px; font-size: 23px; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s, opacity 0.2s; }
-    .btn-primary { background: #22475A; color: white; }
-    .btn-primary:hover { background: #1a3648; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 23px; width: 220px; outline: none; }
-    .search-box:focus { border-color: #22475A; }
-    table { width: 100%; border-collapse: collapse; }
-    thead th { text-align: left; font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; padding: 10px 16px; border-bottom: 2px solid #e5e7eb; cursor: pointer; user-select: none; }
-    thead th:hover { color: #22475A; }
-    thead th.no-sort { cursor: default; }
-    thead th.no-sort:hover { color: #6b7280; }
-    tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.1s; }
-    tbody tr:hover { background: #f8faff; }
-    tbody td { padding: 12px 16px; font-size: 25px; vertical-align: top; }
-    .order-num { font-weight: 600; color: #22475A; font-family: monospace; }
-    .due-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 22px; font-weight: 600; }
-    .due-overdue { background: #fee2e2; color: #dc2626; }
-    .due-soon    { background: #fef3c7; color: #d97706; }
-    .due-ok      { background: #dcfce7; color: #16a34a; }
-    .due-none    { background: #f3f4f6; color: #6b7280; }
-    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 25px; }
-    .state .icon { font-size: 29px; margin-bottom: 8px; }
-    .error-msg { color: #dc2626; }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #22475A; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .job-status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 20px; font-weight: 600; }
-    .section-header td { font-size: 22px; font-weight: 700; padding: 10px 16px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: none; }
-    .section-overdue td { background: #fee2e2; color: #dc2626; }
-    .section-today   td { background: #fef3c7; color: #b45309; }
-    .section-future  td { background: #dcfce7; color: #15803d; }
-  </style>
+  <script>(function(){try{var q=new URLSearchParams(location.search).get('theme');if(q==='auto'){localStorage.removeItem('theme')}else if(q==='dark'||q==='light'){localStorage.setItem('theme',q)}var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
+  <link rel="stylesheet" href="/app.css?v=__V__" />
+  <style>:root { --td: 25px; }</style>
 </head>
 <body>
 <header>
@@ -1159,7 +1042,7 @@ PRESS_HTML = """<!DOCTYPE html>
   <div class="card">
     <div class="toolbar">
       <div class="toolbar-left">
-        <strong style="font-size: 27px">Press Jobs <span class="badge" id="jobCount">0</span></strong>
+        <strong>Press Jobs <span class="badge" id="jobCount">0</span></strong>
         <input class="search-box" type="search" id="searchBox" placeholder="Search&hellip;" oninput="renderTable()" />
       </div>
       <div class="toolbar-left">
@@ -1173,7 +1056,7 @@ PRESS_HTML = """<!DOCTYPE html>
             <option value="1800">Every 30 min</option>
           </select>
         </div>
-        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()" style="margin-top:18px">&#8635; Refresh</button>
+        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()">&#8635; Refresh</button>
       </div>
     </div>
     <div id="tableContainer">
@@ -1337,7 +1220,7 @@ PRESS_HTML = """<!DOCTYPE html>
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
         '<td>' + esc(machine) + '</td>' +
-        '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes || '') + '</td>' +
+        '<td style="white-space:pre-line;color:var(--text-2)">' + esc(r.notes || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
@@ -1424,51 +1307,8 @@ PREPRESS_HTML = """<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Prepress / Graphics Jobs</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a202c; min-height: 100vh; }
-    header { background: #22475A; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
-    header .header-left { display: flex; align-items: center; gap: 20px; }
-    header img.logo { height: 70px; width: auto; }
-    header h1 { font-size: 36px; font-weight: 600; }
-    .status-bar { font-size: 22px; opacity: 0.85; text-align: right; }
-    nav { background: #1a3648; display: flex; gap: 4px; padding: 0 24px; }
-    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 23px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
-    nav a:hover { color: white; }
-    nav a.active { color: #fff; border-bottom-color: #fff; font-weight: 600; }
-    main { padding: 24px 28px; }
-    .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 20px 24px; }
-    .toolbar { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
-    .toolbar-left { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
-    .badge { background: #22475A; color: #fff; border-radius: 999px; padding: 2px 12px; font-size: 20px; font-weight: 700; }
-    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 20px; width: 240px; }
-    .field-sm { display: flex; flex-direction: column; gap: 4px; font-size: 18px; color: #6b7280; }
-    .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 10px; font-size: 18px; }
-    .btn-primary { background: #22475A; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-size: 20px; cursor: pointer; }
-    .btn-primary:hover { background: #1a3648; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    table { width: 100%; border-collapse: collapse; font-size: 22px; }
-    th { text-align: left; padding: 10px 12px; border-bottom: 2px solid #e5e7eb; color: #374151; font-weight: 700; cursor: pointer; white-space: nowrap; }
-    th.no-sort { cursor: default; }
-    td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
-    tr:hover td { background: #f9fafb; }
-    .order-num { font-weight: 700; color: #22475A; white-space: nowrap; }
-    .due-badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 20px; font-weight: 600; white-space: nowrap; }
-    .due-overdue { background: #fee2e2; color: #dc2626; }
-    .due-soon    { background: #fef3c7; color: #b45309; }
-    .due-ok      { background: #dcfce7; color: #15803d; }
-    .due-none    { background: #f3f4f6; color: #6b7280; }
-    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 25px; }
-    .state .icon { font-size: 29px; margin-bottom: 8px; }
-    .error-msg { color: #dc2626; }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #22475A; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .job-status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 20px; font-weight: 600; }
-    .section-header td { font-size: 22px; font-weight: 700; padding: 10px 16px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: none; }
-    .section-overdue td { background: #fee2e2; color: #dc2626; }
-    .section-today   td { background: #fef3c7; color: #b45309; }
-    .section-future  td { background: #dcfce7; color: #15803d; }
-  </style>
+  <script>(function(){try{var q=new URLSearchParams(location.search).get('theme');if(q==='auto'){localStorage.removeItem('theme')}else if(q==='dark'||q==='light'){localStorage.setItem('theme',q)}var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
+  <link rel="stylesheet" href="/app.css?v=__V__" />
 </head>
 <body>
 <header>
@@ -1492,7 +1332,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
   <div class="card">
     <div class="toolbar">
       <div class="toolbar-left">
-        <strong style="font-size: 27px">Prepress / Graphics Jobs <span class="badge" id="jobCount">0</span></strong>
+        <strong>Prepress / Graphics Jobs <span class="badge" id="jobCount">0</span></strong>
         <input class="search-box" type="search" id="searchBox" placeholder="Search&hellip;" oninput="renderTable()" />
       </div>
       <div class="toolbar-left">
@@ -1506,7 +1346,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
             <option value="1800">Every 30 min</option>
           </select>
         </div>
-        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()" style="margin-top:18px">&#8635; Refresh</button>
+        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()">&#8635; Refresh</button>
       </div>
     </div>
     <div id="tableContainer">
@@ -1661,7 +1501,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
-        '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes || '') + '</td>' +
+        '<td style="white-space:pre-line;color:var(--text-2)">' + esc(r.notes || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
@@ -1747,51 +1587,8 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Wide Format Jobs</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a202c; min-height: 100vh; }
-    header { background: #22475A; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
-    header .header-left { display: flex; align-items: center; gap: 20px; }
-    header img.logo { height: 70px; width: auto; }
-    header h1 { font-size: 36px; font-weight: 600; }
-    .status-bar { font-size: 22px; opacity: 0.85; text-align: right; }
-    nav { background: #1a3648; display: flex; gap: 4px; padding: 0 24px; }
-    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 23px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
-    nav a:hover { color: white; }
-    nav a.active { color: white; border-bottom-color: white; }
-    main { padding: 24px 28px; }
-    .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 20px 24px; }
-    .toolbar { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
-    .toolbar-left { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
-    .badge { background: #22475A; color: #fff; border-radius: 999px; padding: 2px 12px; font-size: 20px; font-weight: 700; }
-    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 20px; width: 240px; }
-    .field-sm { display: flex; flex-direction: column; gap: 4px; font-size: 18px; color: #6b7280; }
-    .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 10px; font-size: 18px; }
-    .btn-primary { background: #22475A; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-size: 20px; cursor: pointer; }
-    .btn-primary:hover { background: #1a3648; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    table { width: 100%; border-collapse: collapse; font-size: 22px; }
-    th { text-align: left; padding: 10px 12px; border-bottom: 2px solid #e5e7eb; color: #374151; font-weight: 700; cursor: pointer; white-space: nowrap; }
-    th.no-sort { cursor: default; }
-    td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
-    tr:hover td { background: #f9fafb; }
-    .order-num { font-weight: 700; color: #22475A; white-space: nowrap; }
-    .due-badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 20px; font-weight: 600; white-space: nowrap; }
-    .due-overdue { background: #fee2e2; color: #dc2626; }
-    .due-soon    { background: #fef3c7; color: #b45309; }
-    .due-ok      { background: #dcfce7; color: #15803d; }
-    .due-none    { background: #f3f4f6; color: #6b7280; }
-    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 25px; }
-    .state .icon { font-size: 29px; margin-bottom: 8px; }
-    .error-msg { color: #dc2626; }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #22475A; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .job-status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 20px; font-weight: 600; }
-    .section-header td { font-size: 22px; font-weight: 700; padding: 10px 16px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: none; }
-    .section-overdue td { background: #fee2e2; color: #dc2626; }
-    .section-today   td { background: #fef3c7; color: #b45309; }
-    .section-future  td { background: #dcfce7; color: #15803d; }
-  </style>
+  <script>(function(){try{var q=new URLSearchParams(location.search).get('theme');if(q==='auto'){localStorage.removeItem('theme')}else if(q==='dark'||q==='light'){localStorage.setItem('theme',q)}var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
+  <link rel="stylesheet" href="/app.css?v=__V__" />
 </head>
 <body>
 <header>
@@ -1815,7 +1612,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
   <div class="card">
     <div class="toolbar">
       <div class="toolbar-left">
-        <strong style="font-size: 27px">Wide Format Jobs <span class="badge" id="jobCount">0</span></strong>
+        <strong>Wide Format Jobs <span class="badge" id="jobCount">0</span></strong>
         <input class="search-box" type="search" id="searchBox" placeholder="Search&hellip;" oninput="renderTable()" />
       </div>
       <div class="toolbar-left">
@@ -1829,7 +1626,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
             <option value="1800">Every 30 min</option>
           </select>
         </div>
-        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()" style="margin-top:18px">&#8635; Refresh</button>
+        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()">&#8635; Refresh</button>
       </div>
     </div>
     <div id="tableContainer">
@@ -1990,7 +1787,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
         '<td>' + esc(machine) + '</td>' +
-        '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes || '') + '</td>' +
+        '<td style="white-space:pre-line;color:var(--text-2)">' + esc(r.notes || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
@@ -2071,24 +1868,191 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
 </html>"""
 
 
+APP_CSS = r'''/* Marathon Printing – GoMake Orders Dashboard
+   Shared stylesheet for every tab. Look and tokens follow the Printer's Plan dashboard. */
+:root {
+  color-scheme: light;
+  --bg: #f4f3f0;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --border: #e2e1dc;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --muted: #7a7974;
+  --accent: #2a78d6;
+  --accent-soft: #cde2fb;
+  --critical: #d03b3b;
+  --critical-ink: #b42828;
+  --critical-soft: #fbe5e5;
+  --warning: #fab219;
+  --warning-ink: #8a5a00;
+  --warning-soft: #fdf1d6;
+  --good: #0ca30c;
+  --good-ink: #0a7a0a;
+  --good-soft: #e0f3e0;
+  --radius: 10px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --td: 22px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2b;
+    --text: #ffffff; --text-2: #c3c2b7; --muted: #8f8e86;
+    --accent: #3987e5; --accent-soft: #184f95;
+    --critical-ink: #ff8a8a; --critical-soft: #3a1c1c;
+    --warning-ink: #fab219; --warning-soft: #3a2e12;
+    --good-ink: #6fdc6f; --good-soft: #15301a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2b;
+  --text: #ffffff; --text-2: #c3c2b7; --muted: #8f8e86;
+  --accent: #3987e5; --accent-soft: #184f95;
+  --critical-ink: #ff8a8a; --critical-soft: #3a1c1c;
+  --warning-ink: #fab219; --warning-soft: #3a2e12;
+  --good-ink: #6fdc6f; --good-soft: #15301a;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; color: inherit; }
+
+/* ---------- header + nav ---------- */
+header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+header .header-left { display: flex; align-items: center; gap: 16px; }
+header img.logo { height: 56px; width: auto; border-radius: 8px; }
+header h1 { font-size: 30px; font-weight: 650; letter-spacing: -0.01em; }
+.status-bar { font-size: 20px; color: var(--text-2); background: var(--surface-2); border-radius: 999px; padding: 4px 16px; text-align: right; }
+nav { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; gap: 2px; padding: 0 20px; overflow-x: auto; }
+nav a { color: var(--text-2); text-decoration: none; font-size: 22px; font-weight: 600; padding: 12px 18px; display: inline-block; white-space: nowrap; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
+nav a:hover { color: var(--text); }
+nav a.active { color: var(--text); border-bottom-color: var(--accent); }
+
+/* ---------- layout + cards ---------- */
+main { width: 100%; padding: 20px 28px 40px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 20px; min-width: 0; }
+.toolbar { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+.toolbar-left { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.toolbar strong { font-size: 27px; font-weight: 650; letter-spacing: -0.01em; }
+.badge { display: inline-block; vertical-align: 2px; margin-left: 8px; background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); border-radius: 999px; padding: 1px 12px; font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+/* ---------- controls ---------- */
+.field-sm { display: flex; flex-direction: column; gap: 4px; font-size: 18px; color: var(--text-2); }
+.field-sm label { font-size: 18px; font-weight: 600; color: var(--text-2); }
+.field-sm select, .search-box { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 7px 12px; font-size: 20px; outline: none; }
+.search-box { width: 240px; }
+.search-box:focus, .field-sm select:focus { border-color: var(--accent); }
+button { padding: 8px 18px; border-radius: 8px; font-size: 20px; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: background 0.15s, opacity 0.15s, border-color 0.15s; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+.btn-secondary:hover { background: var(--surface-2); }
+.btn-green { background: var(--good); color: #fff; }
+.btn-green:hover { filter: brightness(1.08); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.sync-status { font-size: 18px; color: var(--muted); align-self: center; }
+
+/* ---------- KPI tiles (Orders summary) ---------- */
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: var(--radius); padding: 14px 20px; min-width: 0; }
+.stat-card.created { border-left-color: var(--accent); }
+.stat-card.due { border-left-color: var(--warning); }
+.stat-card.done { border-left-color: var(--good); }
+.stat-label { font-size: 20px; color: var(--text-2); font-weight: 600; }
+.stat-value { font-size: 43px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat-card.created .stat-value { color: var(--accent); }
+.stat-card.due .stat-value { color: var(--warning-ink); }
+.stat-card.done .stat-value { color: var(--good-ink); }
+.stat-sub { font-size: 20px; color: var(--muted); margin-top: 2px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---------- table ---------- */
+table { width: 100%; border-collapse: collapse; font-size: var(--td); }
+th { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-2); font-size: 20px; font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none; }
+th:hover { color: var(--text); }
+th.no-sort, th.no-sort:hover { cursor: default; color: var(--text-2); }
+td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tbody tr:hover td { background: var(--surface-2); }
+.order-num { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+
+.due-badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 20px; font-weight: 650; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.due-overdue { background: var(--critical-soft); color: var(--critical-ink); }
+.due-soon    { background: var(--warning-soft);  color: var(--warning-ink); }
+.due-ok      { background: var(--good-soft);     color: var(--good-ink); }
+.due-none    { background: var(--surface-2);     color: var(--muted); }
+
+/* section headers: Late / Due Today / Upcoming */
+.section-header td { font-size: 20px; font-weight: 700; padding: 9px 14px; letter-spacing: 0.03em; text-transform: uppercase; border-bottom: none; }
+tbody tr.section-header:hover td { background: inherit; }
+.section-overdue td { background: var(--critical-soft); color: var(--critical-ink); box-shadow: inset 5px 0 0 var(--critical); }
+.section-today   td { background: var(--warning-soft);  color: var(--warning-ink);  box-shadow: inset 5px 0 0 var(--warning); }
+.section-future  td { background: var(--surface-2);     color: var(--text-2);       box-shadow: inset 5px 0 0 var(--good); }
+tbody tr.section-overdue:hover td { background: var(--critical-soft); }
+tbody tr.section-today:hover td   { background: var(--warning-soft); }
+tbody tr.section-future:hover td  { background: var(--surface-2); }
+
+/* job status chips (colours come from the department rules in each page) */
+.job-status-badge { display: inline-block; padding: 1px 9px; border-radius: 6px; font-size: 19px; font-weight: 650; margin: 0 4px 3px 0; }
+.job-item { margin-bottom: 8px; }
+.job-item:last-child { margin-bottom: 0; }
+.job-item strong { display: block; font-size: 21px; font-weight: 650; color: var(--text); margin-bottom: 3px; }
+.status-loading { color: var(--muted); font-size: 19px; font-style: italic; }
+
+/* ---------- states ---------- */
+.state { text-align: center; padding: 48px 24px; color: var(--muted); font-size: 25px; }
+.state .icon { font-size: 29px; margin-bottom: 8px; }
+.error-msg { color: var(--critical-ink); }
+.spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.legend { margin-top: 14px; font-size: 19px; color: var(--muted); }
+
+/* ---------- Completed tab ---------- */
+.tracking-link { color: var(--accent); text-decoration: none; font-weight: 650; }
+.tracking-link:hover { text-decoration: underline; }
+.cost-cell { font-weight: 650; color: var(--good-ink); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 760px) {
+  header { padding: 10px 16px; }
+  header h1 { font-size: 22px; }
+  main { padding: 14px 14px 32px; }
+  .search-box { width: 100%; }
+}
+'''
+import hashlib as _hashlib
+CSS_VERSION = _hashlib.md5(APP_CSS.encode()).hexdigest()[:8]
+
+
+def _page(html: str) -> HTMLResponse:
+    """Serve a dashboard page, pointing it at the current shared stylesheet version."""
+    return HTMLResponse(content=html.replace("__V__", CSS_VERSION))
+
+
+@app.get("/app.css")
+async def serve_css():
+    return Response(content=APP_CSS, media_type="text/css",
+                    headers={"Cache-Control": "public, max-age=3600"})
+
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard():
-    return HTMLResponse(content=DASHBOARD_HTML)
+    return _page(DASHBOARD_HTML)
 
 
 @app.get("/press", response_class=HTMLResponse)
 async def serve_press():
-    return HTMLResponse(content=PRESS_HTML)
+    return _page(PRESS_HTML)
 
 
 @app.get("/prepress", response_class=HTMLResponse)
 async def serve_prepress():
-    return HTMLResponse(content=PREPRESS_HTML)
+    return _page(PREPRESS_HTML)
 
 
 @app.get("/wide-format", response_class=HTMLResponse)
 async def serve_wide_format():
-    return HTMLResponse(content=WIDE_FORMAT_HTML)
+    return _page(WIDE_FORMAT_HTML)
 
 
 SCREEN_PRINTING_HTML = """<!DOCTYPE html>
@@ -2097,51 +2061,8 @@ SCREEN_PRINTING_HTML = """<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Screen Printing Jobs</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a202c; min-height: 100vh; }
-    header { background: #22475A; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
-    header .header-left { display: flex; align-items: center; gap: 20px; }
-    header img.logo { height: 70px; width: auto; }
-    header h1 { font-size: 36px; font-weight: 600; }
-    .status-bar { font-size: 22px; opacity: 0.85; text-align: right; }
-    nav { background: #1a3648; display: flex; gap: 4px; padding: 0 24px; }
-    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 23px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
-    nav a:hover { color: white; }
-    nav a.active { color: white; border-bottom-color: white; }
-    main { padding: 24px 28px; }
-    .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 20px 24px; }
-    .toolbar { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
-    .toolbar-left { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
-    .badge { background: #22475A; color: #fff; border-radius: 999px; padding: 2px 12px; font-size: 20px; font-weight: 700; }
-    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 20px; width: 240px; }
-    .field-sm { display: flex; flex-direction: column; gap: 4px; font-size: 18px; color: #6b7280; }
-    .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 10px; font-size: 18px; }
-    .btn-primary { background: #22475A; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-size: 20px; cursor: pointer; }
-    .btn-primary:hover { background: #1a3648; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    table { width: 100%; border-collapse: collapse; font-size: 22px; }
-    th { text-align: left; padding: 10px 12px; border-bottom: 2px solid #e5e7eb; color: #374151; font-weight: 700; cursor: pointer; white-space: nowrap; }
-    th.no-sort { cursor: default; }
-    td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
-    tr:hover td { background: #f9fafb; }
-    .order-num { font-weight: 700; color: #22475A; white-space: nowrap; }
-    .due-badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 20px; font-weight: 600; white-space: nowrap; }
-    .due-overdue { background: #fee2e2; color: #dc2626; }
-    .due-soon    { background: #fef3c7; color: #b45309; }
-    .due-ok      { background: #dcfce7; color: #15803d; }
-    .due-none    { background: #f3f4f6; color: #6b7280; }
-    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 25px; }
-    .state .icon { font-size: 29px; margin-bottom: 8px; }
-    .error-msg { color: #dc2626; }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #22475A; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .job-status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 20px; font-weight: 600; }
-    .section-header td { font-size: 22px; font-weight: 700; padding: 10px 16px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: none; }
-    .section-overdue td { background: #fee2e2; color: #dc2626; }
-    .section-today   td { background: #fef3c7; color: #b45309; }
-    .section-future  td { background: #dcfce7; color: #15803d; }
-  </style>
+  <script>(function(){try{var q=new URLSearchParams(location.search).get('theme');if(q==='auto'){localStorage.removeItem('theme')}else if(q==='dark'||q==='light'){localStorage.setItem('theme',q)}var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
+  <link rel="stylesheet" href="/app.css?v=__V__" />
 </head>
 <body>
 <header>
@@ -2165,7 +2086,7 @@ SCREEN_PRINTING_HTML = """<!DOCTYPE html>
   <div class="card">
     <div class="toolbar">
       <div class="toolbar-left">
-        <strong style="font-size: 27px">Screen Printing Jobs <span class="badge" id="jobCount">0</span></strong>
+        <strong>Screen Printing Jobs <span class="badge" id="jobCount">0</span></strong>
         <input class="search-box" type="search" id="searchBox" placeholder="Search&hellip;" oninput="renderTable()" />
       </div>
       <div class="toolbar-left">
@@ -2179,7 +2100,7 @@ SCREEN_PRINTING_HTML = """<!DOCTYPE html>
             <option value="1800">Every 30 min</option>
           </select>
         </div>
-        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()" style="margin-top:18px">&#8635; Refresh</button>
+        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()">&#8635; Refresh</button>
       </div>
     </div>
     <div id="tableContainer">
@@ -2342,7 +2263,7 @@ SCREEN_PRINTING_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
-        '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes || '') + '</td>' +
+        '<td style="white-space:pre-line;color:var(--text-2)">' + esc(r.notes || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
@@ -2424,7 +2345,7 @@ SCREEN_PRINTING_HTML = """<!DOCTYPE html>
 
 @app.get("/screen-printing", response_class=HTMLResponse)
 async def serve_screen_printing():
-    return HTMLResponse(content=SCREEN_PRINTING_HTML)
+    return _page(SCREEN_PRINTING_HTML)
 
 
 FINISHING_HTML = """<!DOCTYPE html>
@@ -2433,51 +2354,8 @@ FINISHING_HTML = """<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Finishing Jobs</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a202c; min-height: 100vh; }
-    header { background: #22475A; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
-    header .header-left { display: flex; align-items: center; gap: 20px; }
-    header img.logo { height: 70px; width: auto; }
-    header h1 { font-size: 36px; font-weight: 600; }
-    .status-bar { font-size: 22px; opacity: 0.85; text-align: right; }
-    nav { background: #1a3648; display: flex; gap: 4px; padding: 0 24px; }
-    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 23px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
-    nav a:hover { color: white; }
-    nav a.active { color: white; border-bottom-color: white; }
-    main { padding: 24px 28px; }
-    .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 20px 24px; }
-    .toolbar { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
-    .toolbar-left { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
-    .badge { background: #22475A; color: #fff; border-radius: 999px; padding: 2px 12px; font-size: 20px; font-weight: 700; }
-    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 20px; width: 240px; }
-    .field-sm { display: flex; flex-direction: column; gap: 4px; font-size: 18px; color: #6b7280; }
-    .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 10px; font-size: 18px; }
-    .btn-primary { background: #22475A; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-size: 20px; cursor: pointer; }
-    .btn-primary:hover { background: #1a3648; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    table { width: 100%; border-collapse: collapse; font-size: 22px; }
-    th { text-align: left; padding: 10px 12px; border-bottom: 2px solid #e5e7eb; color: #374151; font-weight: 700; cursor: pointer; white-space: nowrap; }
-    th.no-sort { cursor: default; }
-    td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
-    tr:hover td { background: #f9fafb; }
-    .order-num { font-weight: 700; color: #22475A; white-space: nowrap; }
-    .due-badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 20px; font-weight: 600; white-space: nowrap; }
-    .due-overdue { background: #fee2e2; color: #dc2626; }
-    .due-soon    { background: #fef3c7; color: #b45309; }
-    .due-ok      { background: #dcfce7; color: #15803d; }
-    .due-none    { background: #f3f4f6; color: #6b7280; }
-    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 25px; }
-    .state .icon { font-size: 29px; margin-bottom: 8px; }
-    .error-msg { color: #dc2626; }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #22475A; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .job-status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 20px; font-weight: 600; }
-    .section-header td { font-size: 22px; font-weight: 700; padding: 10px 16px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: none; }
-    .section-overdue td { background: #fee2e2; color: #dc2626; }
-    .section-today   td { background: #fef3c7; color: #b45309; }
-    .section-future  td { background: #dcfce7; color: #15803d; }
-  </style>
+  <script>(function(){try{var q=new URLSearchParams(location.search).get('theme');if(q==='auto'){localStorage.removeItem('theme')}else if(q==='dark'||q==='light'){localStorage.setItem('theme',q)}var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
+  <link rel="stylesheet" href="/app.css?v=__V__" />
 </head>
 <body>
 <header>
@@ -2501,7 +2379,7 @@ FINISHING_HTML = """<!DOCTYPE html>
   <div class="card">
     <div class="toolbar">
       <div class="toolbar-left">
-        <strong style="font-size: 27px">Finishing Jobs <span class="badge" id="jobCount">0</span></strong>
+        <strong>Finishing Jobs <span class="badge" id="jobCount">0</span></strong>
         <input class="search-box" type="search" id="searchBox" placeholder="Search&hellip;" oninput="renderTable()" />
       </div>
       <div class="toolbar-left">
@@ -2515,7 +2393,7 @@ FINISHING_HTML = """<!DOCTYPE html>
             <option value="1800">Every 30 min</option>
           </select>
         </div>
-        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()" style="margin-top:18px">&#8635; Refresh</button>
+        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()">&#8635; Refresh</button>
       </div>
     </div>
     <div id="tableContainer">
@@ -2678,7 +2556,7 @@ FINISHING_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
-        '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes || '') + '</td>' +
+        '<td style="white-space:pre-line;color:var(--text-2)">' + esc(r.notes || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
@@ -2760,7 +2638,7 @@ FINISHING_HTML = """<!DOCTYPE html>
 
 @app.get("/finishing", response_class=HTMLResponse)
 async def serve_finishing():
-    return HTMLResponse(content=FINISHING_HTML)
+    return _page(FINISHING_HTML)
 
 
 SHIPPING_HTML = """<!DOCTYPE html>
@@ -2769,51 +2647,8 @@ SHIPPING_HTML = """<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Shipping Jobs</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a202c; min-height: 100vh; }
-    header { background: #22475A; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
-    header .header-left { display: flex; align-items: center; gap: 20px; }
-    header img.logo { height: 70px; width: auto; }
-    header h1 { font-size: 36px; font-weight: 600; }
-    .status-bar { font-size: 22px; opacity: 0.85; text-align: right; }
-    nav { background: #1a3648; display: flex; gap: 4px; padding: 0 24px; }
-    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 23px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
-    nav a:hover { color: white; }
-    nav a.active { color: white; border-bottom-color: white; }
-    main { padding: 24px 28px; }
-    .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 20px 24px; }
-    .toolbar { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
-    .toolbar-left { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
-    .badge { background: #22475A; color: #fff; border-radius: 999px; padding: 2px 12px; font-size: 20px; font-weight: 700; }
-    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 20px; width: 240px; }
-    .field-sm { display: flex; flex-direction: column; gap: 4px; font-size: 18px; color: #6b7280; }
-    .field-sm select { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 10px; font-size: 18px; }
-    .btn-primary { background: #22475A; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-size: 20px; cursor: pointer; }
-    .btn-primary:hover { background: #1a3648; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    table { width: 100%; border-collapse: collapse; font-size: 22px; }
-    th { text-align: left; padding: 10px 12px; border-bottom: 2px solid #e5e7eb; color: #374151; font-weight: 700; cursor: pointer; white-space: nowrap; }
-    th.no-sort { cursor: default; }
-    td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
-    tr:hover td { background: #f9fafb; }
-    .order-num { font-weight: 700; color: #22475A; white-space: nowrap; }
-    .due-badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 20px; font-weight: 600; white-space: nowrap; }
-    .due-overdue { background: #fee2e2; color: #dc2626; }
-    .due-soon    { background: #fef3c7; color: #b45309; }
-    .due-ok      { background: #dcfce7; color: #15803d; }
-    .due-none    { background: #f3f4f6; color: #6b7280; }
-    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 25px; }
-    .state .icon { font-size: 29px; margin-bottom: 8px; }
-    .error-msg { color: #dc2626; }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #22475A; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .job-status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 20px; font-weight: 600; }
-    .section-header td { font-size: 22px; font-weight: 700; padding: 10px 16px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: none; }
-    .section-overdue td { background: #fee2e2; color: #dc2626; }
-    .section-today   td { background: #fef3c7; color: #b45309; }
-    .section-future  td { background: #dcfce7; color: #15803d; }
-  </style>
+  <script>(function(){try{var q=new URLSearchParams(location.search).get('theme');if(q==='auto'){localStorage.removeItem('theme')}else if(q==='dark'||q==='light'){localStorage.setItem('theme',q)}var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
+  <link rel="stylesheet" href="/app.css?v=__V__" />
 </head>
 <body>
 <header>
@@ -2836,7 +2671,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
   <div class="card">
     <div class="toolbar">
       <div class="toolbar-left">
-        <strong style="font-size: 27px">Shipping Jobs <span class="badge" id="jobCount">0</span></strong>
+        <strong>Shipping Jobs <span class="badge" id="jobCount">0</span></strong>
         <input class="search-box" type="search" id="searchBox" placeholder="Search&hellip;" oninput="renderTable()" />
       </div>
       <div class="toolbar-left">
@@ -2850,7 +2685,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
             <option value="1800">Every 30 min</option>
           </select>
         </div>
-        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()" style="margin-top:18px">&#8635; Refresh</button>
+        <button class="btn-primary" id="refreshBtn" onclick="loadOrders()">&#8635; Refresh</button>
       </div>
     </div>
     <div id="tableContainer">
@@ -3003,7 +2838,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
-        '<td style="white-space:pre-line;color:#4a5568">' + esc(r.notes || '') + '</td>' +
+        '<td style="white-space:pre-line;color:var(--text-2)">' + esc(r.notes || '') + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
@@ -3085,7 +2920,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
 
 @app.get("/shipping", response_class=HTMLResponse)
 async def serve_shipping():
-    return HTMLResponse(content=SHIPPING_HTML)
+    return _page(SHIPPING_HTML)
 
 
 @app.get("/api/completed-orders")
@@ -3169,42 +3004,8 @@ COMPLETED_HTML = """<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Completed Orders</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a202c; min-height: 100vh; }
-    header { background: #22475A; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
-    header .header-left { display: flex; align-items: center; gap: 20px; }
-    header img.logo { height: 70px; width: auto; }
-    header h1 { font-size: 36px; font-weight: 600; }
-    .status-bar { font-size: 22px; opacity: 0.85; text-align: right; }
-    nav { background: #1a3648; display: flex; gap: 4px; padding: 0 24px; }
-    nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 23px; font-weight: 600; padding: 12px 20px; display: inline-block; border-bottom: 3px solid transparent; transition: color 0.15s, border-color 0.15s; }
-    nav a:hover { color: white; }
-    nav a.active { color: white; border-bottom-color: white; }
-    main { padding: 24px 28px; }
-    .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 20px 24px; }
-    .toolbar { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
-    .toolbar-left { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
-    .badge { background: #22475A; color: #fff; border-radius: 999px; padding: 2px 12px; font-size: 20px; font-weight: 700; }
-    .search-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 20px; width: 240px; }
-    .btn-primary { background: #22475A; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-size: 20px; cursor: pointer; }
-    .btn-primary:hover { background: #1a3648; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    table { width: 100%; border-collapse: collapse; font-size: 22px; }
-    th { text-align: left; padding: 10px 12px; border-bottom: 2px solid #e5e7eb; color: #374151; font-weight: 700; cursor: pointer; white-space: nowrap; }
-    th.no-sort { cursor: default; }
-    td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
-    tr:hover td { background: #f9fafb; }
-    .order-num { font-weight: 700; color: #22475A; white-space: nowrap; }
-    .tracking-link { color: #2563eb; text-decoration: none; font-weight: 600; }
-    .tracking-link:hover { text-decoration: underline; }
-    .state { text-align: center; padding: 48px 24px; color: #6b7280; font-size: 25px; }
-    .state .icon { font-size: 29px; margin-bottom: 8px; }
-    .error-msg { color: #dc2626; }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #e5e7eb; border-top-color: #22475A; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .cost-cell { font-weight: 600; color: #16a34a; }
-  </style>
+  <script>(function(){try{var q=new URLSearchParams(location.search).get('theme');if(q==='auto'){localStorage.removeItem('theme')}else if(q==='dark'||q==='light'){localStorage.setItem('theme',q)}var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
+  <link rel="stylesheet" href="/app.css?v=__V__" />
 </head>
 <body>
 <header>
@@ -3228,7 +3029,7 @@ COMPLETED_HTML = """<!DOCTYPE html>
   <div class="card">
     <div class="toolbar">
       <div class="toolbar-left">
-        <strong style="font-size: 27px">Completed Orders <span class="badge" id="orderCount">0</span></strong>
+        <strong>Completed Orders <span class="badge" id="orderCount">0</span></strong>
         <input class="search-box" type="search" id="searchBox" placeholder="Search&hellip;" oninput="renderTable()" />
       </div>
       <div class="toolbar-left">
@@ -3355,7 +3156,7 @@ COMPLETED_HTML = """<!DOCTYPE html>
 
 @app.get("/completed", response_class=HTMLResponse)
 async def serve_completed():
-    return HTMLResponse(content=COMPLETED_HTML)
+    return _page(COMPLETED_HTML)
 
 
 # ── Shared GoMake data cache ──────────────────────────────────────────────────
