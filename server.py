@@ -3087,7 +3087,7 @@ async def get_completed_orders():
                         "customer_name":  gm.get("customerName") or gm.get("contactName") or "",
                         "due_date":       str(gm.get("dueDate") or "")[:10],
                         "notes":          gm.get("internalNotes") or gm.get("notes") or "",
-                        "csr":            ((gm.get("agent") or {}).get("firstname") or _AGENT_NAMES.get(gm.get("agentId"), "") or "").strip(),
+                        "csr":            _first_name(gm.get("agent")) or _ORDER_CSR.get(str(gm.get("id")), ""),
                         "ship_date":      str(s.get("shipDate") or "")[:10],
                         "carrier_code":   s.get("carrierCode") or "",
                         "service_code":   s.get("serviceCode") or "",
@@ -3329,33 +3329,51 @@ async def _fetch_orders_page(page: int):
 
 
 _AGENT_NAMES: dict = {}   # GoMake agentId -> first name (the order's Sales Representative)
+_ORDER_CSR: dict = {}     # GoMake order id -> sales rep first name
+
+
+def _first_name(agent) -> str:
+    if isinstance(agent, dict):
+        n = agent.get("firstname") or agent.get("firstName") or ""
+        if not n and agent.get("name"):
+            n = str(agent["name"]).split()[0]
+        return str(n).strip()
+    return ""
 
 
 async def _attach_csr(client, data):
-    """Add a 'csr' field (sales rep's first name) to every order in a list response."""
+    """Add a 'csr' field (sales rep's first name) to every order in a list response.
+    Uses the rep on the list item when present; otherwise looks the order up once
+    (order detail has the 'agent') and remembers the answer."""
     try:
         d = data.get("data") if isinstance(data, dict) else None
         orders = d.get("data", []) if isinstance(d, dict) else (d or [])
-        # Learn names already present on the list items
         for o in orders:
-            a = o.get("agent")
-            if o.get("agentId") and isinstance(a, dict) and a.get("firstname"):
-                _AGENT_NAMES[o["agentId"]] = str(a["firstname"]).strip()
-        # Look up any rep we haven't seen yet (one order detail per rep, then remembered)
-        for o in orders:
-            aid = o.get("agentId")
-            if aid and aid not in _AGENT_NAMES and o.get("id"):
+            n = _first_name(o.get("agent"))
+            if n:
+                _ORDER_CSR[str(o.get("id"))] = n
+                if o.get("agentId"):
+                    _AGENT_NAMES[o["agentId"]] = n
+            elif o.get("agentId") in _AGENT_NAMES:
+                _ORDER_CSR[str(o.get("id"))] = _AGENT_NAMES[o["agentId"]]
+        missing = [o for o in orders if o.get("id") and str(o["id"]) not in _ORDER_CSR]
+        sem = asyncio.Semaphore(5)
+
+        async def look(o):
+            async with sem:
                 try:
                     r = await client.get(f"{GOMAKE_BASE}/sales-orders/{o['id']}", headers=_gomake_headers())
                     r.raise_for_status()
-                    ag = (r.json().get("data") or {}).get("agent") or {}
-                    _AGENT_NAMES[aid] = str(ag.get("firstname") or "").strip()
-                except Exception:
-                    pass
+                    n = _first_name((r.json().get("data") or {}).get("agent"))
+                    if n:
+                        _ORDER_CSR[str(o["id"])] = n
+                        if o.get("agentId"):
+                            _AGENT_NAMES[o["agentId"]] = n
+                except Exception as e:
+                    print(f"[csr] lookup failed for {o.get('id')}: {e}")
+        await asyncio.gather(*[look(o) for o in missing])
         for o in orders:
-            a = o.get("agent")
-            o["csr"] = (str(a.get("firstname")).strip() if isinstance(a, dict) and a.get("firstname")
-                        else _AGENT_NAMES.get(o.get("agentId"), ""))
+            o["csr"] = _ORDER_CSR.get(str(o.get("id")), "")
     except Exception as e:
         print(f"[csr] could not attach sales reps: {e}")
 
@@ -3375,6 +3393,9 @@ async def _fetch_order_jobs(order_id: str):
             raise HTTPException(status_code=502, detail=f"Could not reach GoMake: {e}")
 
         document_items = order_data.get("data", {}).get("documentItems", [])
+        _n = _first_name(order_data.get("data", {}).get("agent"))
+        if _n:
+            _ORDER_CSR[str(order_id)] = _n
 
         # Step 2: fetch job statuses in parallel
         async def fetch_job_status(item):
@@ -3461,6 +3482,19 @@ async def get_order_jobs(order_id: str):
     if not CLIENT_ID or not CLIENT_SECRET:
         raise HTTPException(status_code=500, detail="Server credentials not configured.")
     return await _cached(f"jobs:{order_id}", lambda: _fetch_order_jobs(order_id))
+
+
+@app.get("/api/debug/csr")
+async def debug_csr():
+    """Shows which sales rep the dashboard found for the first orders (for troubleshooting)."""
+    data = await _cached("orders:0", lambda: _fetch_orders_page(0))
+    d = data.get("data") if isinstance(data, dict) else None
+    orders = d.get("data", []) if isinstance(d, dict) else []
+    return {"known_reps": len(_ORDER_CSR),
+            "sample": [{"number": o.get("number"), "csr": o.get("csr"), "has_agentId": bool(o.get("agentId")),
+                        "has_agent": bool(o.get("agent")),
+                        "rep_like_keys": [k for k in o if any(w in k.lower() for w in ("agent", "rep", "sales", "support"))]}
+                       for o in orders[:8]]}
 
 
 @app.get("/api/cache/status")
