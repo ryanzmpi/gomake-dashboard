@@ -2067,11 +2067,10 @@ const NB = (() => {
 
   function label(nb, t) {
     const d = diff(nb, t);
-    if (d < 0) return 'Needed ' + fmtShort(nb);
+    if (d < 0) return fmtShort(nb);
     if (d === 0) return 'Need today';
     if (nb === nextWorkday(t) && d === 1) return 'Need tomorrow';
-    if (d <= 6) return 'Need ' + WD[dow(nb)];
-    return 'Need ' + fmtDay(nb);
+    return fmtDay(nb);
   }
 
   // Cell HTML for a row: friendly Need By chip + the rest of the note text.
