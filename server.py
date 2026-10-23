@@ -867,7 +867,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         '<td class="order-num">' + esc(r.order_number) + '</td>' +
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.works_names) + '</td>' +
-        '<td style="white-space:pre-line;color:var(--text-2)">' + esc(r.notes) + '</td>' +
+        '<td style="white-space:pre-line;color:var(--text-2)">' + notesHtml(r) + '</td>' +
         '<td>' + renderJobStatuses(r.jobStatuses) + '</td>' +
         '</tr>';
     }
@@ -1220,7 +1220,7 @@ PRESS_HTML = """<!DOCTYPE html>
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
         '<td>' + esc(machine) + '</td>' +
-        '<td style="white-space:pre-line;color:var(--text-2)">' + esc(r.notes || '') + '</td>' +
+        '<td style="white-space:pre-line;color:var(--text-2)">' + notesHtml(r) + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
@@ -1501,7 +1501,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
-        '<td style="white-space:pre-line;color:var(--text-2)">' + esc(r.notes || '') + '</td>' +
+        '<td style="white-space:pre-line;color:var(--text-2)">' + notesHtml(r) + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
@@ -1787,7 +1787,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
         '<td>' + esc(machine) + '</td>' +
-        '<td style="white-space:pre-line;color:var(--text-2)">' + esc(r.notes || '') + '</td>' +
+        '<td style="white-space:pre-line;color:var(--text-2)">' + notesHtml(r) + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
@@ -2019,14 +2019,100 @@ tbody tr.section-future:hover td  { background: var(--surface-2); }
   main { padding: 14px 14px 32px; }
   .search-box { width: 100%; }
 }
+
+/* Need By chips */
+.nb-chip { display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:999px; font-size:.85em; font-weight:600; white-space:nowrap; background:rgba(128,128,128,.15); color:var(--text-2); }
+.nb-chip svg { width:.8em; height:.8em; }
+.nb-hot  { background: var(--warning-soft); color: var(--warning-ink); box-shadow: inset 0 0 0 1px var(--warning); }
+.nb-late { background:#fde2e2; color:#a11; box-shadow: inset 0 0 0 1px #e66; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .nb-late { background:#3a1717; color:#ff9a9a; } }
+:root[data-theme="dark"] .nb-late { background:#3a1717; color:#ff9a9a; }
+.nb-rest { color: var(--text-2); }
+'''
+NB_JS = r'''// Need By ("NB 10/09/26") interpretation, ported from the Printer's Plan dashboard.
+const NB = (() => {
+  const DAY = 86400000, WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const parse = d => Date.UTC(+d.slice(0,4), +d.slice(5,7)-1, +d.slice(8,10));
+  const iso = t => new Date(t).toISOString().slice(0,10);
+  const addDays = (d,n) => iso(parse(d) + n*DAY);
+  const dow = d => new Date(parse(d)).getUTCDay();
+  const diff = (a,b) => Math.round((parse(a)-parse(b))/DAY);
+  const isWE = d => dow(d)===0 || dow(d)===6;
+  const nextWorkday = d => { let x = addDays(d,1); while (isWE(x)) x = addDays(x,1); return x; };
+  const fmtShort = d => +d.slice(5,7) + '/' + +d.slice(8,10);
+  const fmtDay = d => WD[dow(d)] + ' ' + fmtShort(d);
+  const today = () => new Intl.DateTimeFormat('en-CA', {timeZone:'America/Los_Angeles'}).format(new Date());
+  const RE = /\bNB\s*[:\-]?\s*(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{2,4}))?/i;
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.2 1 3 9.2h4.3L6.4 15l6.6-8.6H8.6z" fill="currentColor"/></svg>';
+
+  // Returns {date:'YYYY-MM-DD'|null, match:string|null}
+  function parseNB(notes, due) {
+    const m = RE.exec(notes || '');
+    if (!m) return {date:null, match:null};
+    const mo = +m[1], d = +m[2];
+    if (!(mo>=1 && mo<=12 && d>=1 && d<=31)) return {date:null, match:m[0]};
+    const ref = due && /^\d{4}-\d{2}-\d{2}/.test(due) ? due.slice(0,10) : today();
+    const refY = +ref.slice(0,4);
+    let y = m[3] ? +m[3] : refY;
+    if (y < 100) y += 2000;
+    let out = y + '-' + String(mo).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    // Well before the due date: no year typed -> next year; typed year way off -> typo, use the due year.
+    if (diff(out, ref) < -60) {
+      out = (m[3] ? refY : y+1) + out.slice(4);
+      if (diff(out, ref) < -60) out = (+out.slice(0,4)+1) + out.slice(4);
+    }
+    return {date: out, match: m[0]};
+  }
+
+  function label(nb, t) {
+    const d = diff(nb, t);
+    if (d < 0) return 'Needed ' + fmtShort(nb);
+    if (d === 0) return 'Need today';
+    if (nb === nextWorkday(t) && d === 1) return 'Need tomorrow';
+    if (d <= 6) return 'Need ' + WD[dow(nb)];
+    return 'Need ' + fmtDay(nb);
+  }
+
+  // Cell HTML for a row: friendly Need By chip + the rest of the note text.
+  function html(r) {
+    const notes = String(r.notes || '');
+    const t = today();
+    const p = parseNB(notes, r.due_date);
+    if (!p.match) return esc(notes);
+    const rest = notes.replace(p.match, '').replace(/^[\s,;|\-]+|[\s,;|\-]+$/g, '').replace(/[ \t]{2,}/g, ' ');
+    let chip;
+    if (!p.date) {
+      const mm = /\bNB\b[ \t:]*([^\r\n|]{0,12})/i.exec(notes);
+      chip = '<span class="nb-chip nb-unk" title="Need By not a full date">NB ' + esc(mm && mm[1].trim()) + '</span>';
+    } else {
+      const d = diff(p.date, t);
+      const hot = d <= 1 && (d < 0 || d === 0 || nextWorkday(t) === p.date || d === 1);
+      const cls = d < 0 ? 'nb-late' : hot ? 'nb-hot' : 'nb-ok';
+      chip = '<span class="nb-chip ' + cls + '" title="Need by ' + esc(p.date) + '">' + (cls !== 'nb-ok' ? ICON : '') + esc(label(p.date, t)) + '</span>';
+    }
+    return chip + (rest ? ' <span class="nb-rest">' + esc(rest) + '</span>' : '');
+  }
+  return {parseNB, label, html};
+})();
+function notesHtml(r) { return NB.html(r); }
 '''
 import hashlib as _hashlib
-CSS_VERSION = _hashlib.md5(APP_CSS.encode()).hexdigest()[:8]
+CSS_VERSION = _hashlib.md5((APP_CSS + NB_JS).encode()).hexdigest()[:8]
 
 
 def _page(html: str) -> HTMLResponse:
     """Serve a dashboard page, pointing it at the current shared stylesheet version."""
-    return HTMLResponse(content=html.replace("__V__", CSS_VERSION))
+    html = html.replace("__V__", CSS_VERSION)
+    if "</head>" in html:
+        html = html.replace("</head>", '<script src="/nb.js?v=' + CSS_VERSION + '"></script></head>', 1)
+    return HTMLResponse(content=html)
+
+
+@app.get("/nb.js")
+async def serve_nb_js():
+    return Response(content=NB_JS, media_type="application/javascript",
+                    headers={"Cache-Control": "public, max-age=3600"})
 
 
 @app.get("/app.css")
@@ -2263,7 +2349,7 @@ SCREEN_PRINTING_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
-        '<td style="white-space:pre-line;color:var(--text-2)">' + esc(r.notes || '') + '</td>' +
+        '<td style="white-space:pre-line;color:var(--text-2)">' + notesHtml(r) + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
@@ -2556,7 +2642,7 @@ FINISHING_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
-        '<td style="white-space:pre-line;color:var(--text-2)">' + esc(r.notes || '') + '</td>' +
+        '<td style="white-space:pre-line;color:var(--text-2)">' + notesHtml(r) + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
@@ -2838,7 +2924,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
         '<td><span class="due-badge ' + cls + '">' + label + '</span></td>' +
         '<td>' + esc(r.product_name) + '</td>' +
         '<td>' + (r.quantity ? esc(String(r.quantity)) : '&#8212;') + '</td>' +
-        '<td style="white-space:pre-line;color:var(--text-2)">' + esc(r.notes || '') + '</td>' +
+        '<td style="white-space:pre-line;color:var(--text-2)">' + notesHtml(r) + '</td>' +
         '<td>' + (badges || '&#8212;') + '</td>' +
         '</tr>';
     }
@@ -3127,7 +3213,7 @@ COMPLETED_HTML = """<!DOCTYPE html>
       return '<tr>' +
         '<td class="order-num">' + esc(r.order_number) + '</td>' +
         '<td>' + esc(r.customer_name) + '</td>' +
-        '<td>' + esc(r.notes) + '</td>' +
+        '<td>' + notesHtml(r) + '</td>' +
         '<td>' + formatDate(r.due_date) + '</td>' +
         '<td>' + formatDate(r.ship_date) + '</td>' +
         '<td>' + esc(formatService(r.carrier_code, r.service_code)) + '</td>' +
