@@ -667,8 +667,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
 
       // Orders with readyDate might be fully done — fetch their job statuses to check
+      // An order marked "Ready" in GoMake has completed all its tasks, so it is done.
       const definitelyOpen = openCandidates.filter(o => !o.readyDate);
-      const mightBeDone   = openCandidates.filter(o =>  o.readyDate);
+      const mightBeDone   = [];
 
       const prefetchedStatuses = {};
       if (mightBeDone.length) {
@@ -1113,6 +1114,7 @@ PRESS_HTML = """<!DOCTYPE html>
         if (!orders.length) break;
         const open = orders.filter(o =>
           !String(o.statusTitleText || '').toLowerCase().includes('closed') &&
+          !o.readyDate &&
           o.deliveryStatus !== 3
         );
         openOrders.push(...open);
@@ -1400,6 +1402,7 @@ PREPRESS_HTML = """<!DOCTYPE html>
         if (!orders.length) break;
         const open = orders.filter(o =>
           !String(o.statusTitleText || '').toLowerCase().includes('closed') &&
+          !o.readyDate &&
           o.deliveryStatus !== 3
         );
         openOrders.push(...open);
@@ -1687,6 +1690,7 @@ WIDE_FORMAT_HTML = """<!DOCTYPE html>
         if (!orders.length) break;
         const open = orders.filter(o =>
           !String(o.statusTitleText || '').toLowerCase().includes('closed') &&
+          !o.readyDate &&
           o.deliveryStatus !== 3
         );
         openOrders.push(...open);
@@ -2253,6 +2257,7 @@ SCREEN_PRINTING_HTML = """<!DOCTYPE html>
         if (!orders.length) break;
         const open = orders.filter(o =>
           !String(o.statusTitleText || '').toLowerCase().includes('closed') &&
+          !o.readyDate &&
           o.deliveryStatus !== 3
         );
         openOrders.push(...open);
@@ -2549,6 +2554,7 @@ FINISHING_HTML = """<!DOCTYPE html>
         if (!orders.length) break;
         const open = orders.filter(o =>
           !String(o.statusTitleText || '').toLowerCase().includes('closed') &&
+          !o.readyDate &&
           o.deliveryStatus !== 3
         );
         openOrders.push(...open);
@@ -2834,6 +2840,7 @@ SHIPPING_HTML = """<!DOCTYPE html>
         if (!orders.length) break;
         const open = orders.filter(o =>
           !String(o.statusTitleText || '').toLowerCase().includes('closed') &&
+          !o.readyDate &&
           o.deliveryStatus !== 3
         );
         openOrders.push(...open);
